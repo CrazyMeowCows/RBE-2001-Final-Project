@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<head><title>Linkage Synthesis</title></head>
+
+<canvas id="canvas" width="1400" height="950"></canvas>    
+
+<script>
+    var canvas = document.getElementById('canvas')
+    var ctx = canvas.getContext("2d");
+    ctx.translate(10, -10);
+
+    //Utils--------------------------------------------------------------------
+    function circle(x, y, r, doOutline) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, 2*Math.PI, false);
+        ctx.fill();
+        if (doOutline) ctx.stroke();
+    }
+    function line(x, y, x2, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+    function Wheel (x, y, rad, rot) {
+        this.x = x;
+        this.y = y;
+        
+        this.rad = rad;
+        this.rot = rot;
+
+        this.updatePivot = ()=>{
+            this.pivotX = this.x+Math.cos(this.rot)*this.rad;
+            this.pivotY = this.y+Math.sin(this.rot)*this.rad;
+        }
+        this.updatePivot();
+    }
+
+    //Constants----------------------------------------------------------------
+    const W = 1400;
+    const H = 950;
+
+    const pxPerMM = 1400/500;
+    const shelfDepth_mm = 60;
+    const pivotRad_px = 15;
+
+    const PI = Math.PI;
+    const linkageW_px = 20;
+
+    const targetX = shelfDepth_mm-25/2;
+    const targetYPoints = [25/2, 182+25/2, 224+25/2, 266+25/2];
+
+    var targetScores = [999, 999, 999, 999];
+    var prevSystemScore = 999;
+
+    //System Variables----------------------------------------------------------------
+    function System (wheel1, wheel2, lengthA, lengthB, lengthBTotal) {
+        this.wheel1 = wheel1;
+        this.wheel2 = wheel2;
+        this.lengthA = lengthA;
+        this.lengthB = lengthB;
+        this.lengthBTotal = lengthBTotal;
+    }
+
+    var bestSystem = new System(new Wheel(350, 100, 30, 0), new Wheel(400, 150, 30, 0), 100, 60, 300);
+
+    var wheel1 = new Wheel(350, 100, 30, 0);
+    var wheel2 = new Wheel(400, 150, 30, 0);
+
+    var linkageALength = 100;
+    var linkageBLength = 60;
+    var linkageTotalLength = 300;
+
+    function getRandom() {
+        return (Math.random()-0.5)*20;
+    }
+
+    function mutateSystem() {
+        wheel1.x += getRandom();
+        wheel1.y += getRandom();
+        wheel1.rad += getRandom();
+        wheel2.x += getRandom();
+        wheel2.y += getRandom();
+        wheel2.rad += getRandom();
+
+        linkageALength += getRandom();
+        linkageBLength += getRandom();
+        linkageTotalLength += getRandom();
+    }
+
+    function scoreSystem() {
+        return targetScores.reduce((acc, curr) => acc + curr, 0);
+    }
+
+    //Kinematic References
+    var linkagePivotX;
+    var linkagePivotY;
+    var linkageEndpointX;
+    var linkageEndpointY;
+
+    function updateKinematics () {
+        wheel1.updatePivot();
+        wheel2.updatePivot();
+
+        let c = Math.hypot(wheel1.pivotX-wheel2.pivotX, wheel1.pivotY-wheel2.pivotY);
+        let thetaInterior = Math.acos((linkageBLength*linkageBLength-linkageALength*linkageALength-c*c)/(-2*linkageALength*c)); 
+        let thetaReference = Math.atan2(wheel1.pivotY-wheel2.pivotY, wheel1.pivotX-wheel2.pivotX);
+        let thetaLinkage = thetaReference-thetaInterior;
+        linkagePivotX = wheel2.pivotX+Math.cos(thetaLinkage)*linkageALength;
+        linkagePivotY = wheel2.pivotY+Math.sin(thetaLinkage)*linkageALength;
+
+        linkageEndpointX = wheel2.pivotX+Math.cos(thetaLinkage)*linkageTotalLength;
+        linkageEndpointY = wheel2.pivotY+Math.sin(thetaLinkage)*linkageTotalLength;
+
+        for(let y in targetYPoints) {
+            if (isNaN(linkageEndpointX+linkageEndpointY)) return;
+            targetScores[y] = Math.min(targetScores[y], Math.hypot(linkageEndpointX-targetX, linkageEndpointY-targetYPoints[y]));
+        }
+    }
+
+    //Drawing------------------------------------------------------------------
+    function renderSystem() {
+        // ctx.clearRect(0, 0, W, H);
+
+        ctx.strokeStyle = "brown";
+        ctx.lineWidth = 2*pxPerMM;
+        line(0, H, 0, H-264*pxPerMM)
+        line(0, H, shelfDepth_mm*pxPerMM, H)
+        line(0, H-181*pxPerMM, shelfDepth_mm*pxPerMM, H-181*pxPerMM)
+        line(0, H-223*pxPerMM, shelfDepth_mm*pxPerMM, H-223*pxPerMM)
+        line(0, H-264*pxPerMM, shelfDepth_mm*pxPerMM, H-264*pxPerMM)
+
+
+        ctx.strokeStyle = "black";
+        ctx.fillStyle = "red";
+        circle(wheel1.x*pxPerMM, H-wheel1.y*pxPerMM, wheel1.rad*pxPerMM, true);
+        ctx.fillStyle = "green";
+        circle(wheel2.x*pxPerMM, H-wheel2.y*pxPerMM, wheel2.rad*pxPerMM, true);
+
+        ctx.strokeStyle = "gray";
+        ctx.lineWidth = linkageW_px;
+        // line(wheel2.pivotX*pxPerMM, H-wheel2.pivotY*pxPerMM, linkageEndpointX*pxPerMM, H-linkageEndpointY*pxPerMM);
+        line(wheel1.pivotX*pxPerMM, H-wheel1.pivotY*pxPerMM, linkagePivotX*pxPerMM, H-linkagePivotY*pxPerMM);
+        
+        ctx.lineWidth = 2*pxPerMM;
+        ctx.strokeStyle = "black";
+        ctx.fillStyle = "lightgray";
+        circle(wheel1.pivotX*pxPerMM, H-wheel1.pivotY*pxPerMM, pivotRad_px, true);
+        circle(wheel2.pivotX*pxPerMM, H-wheel2.pivotY*pxPerMM, pivotRad_px, true);
+        circle(linkagePivotX*pxPerMM, H-linkagePivotY*pxPerMM, pivotRad_px, true);
+        circle(linkageEndpointX*pxPerMM, H-linkageEndpointY*pxPerMM, pivotRad_px, true);
+
+        ctx.fillStyle = "lime";
+        for(let y in targetYPoints) {
+            circle(targetX*pxPerMM, H-targetYPoints[y]*pxPerMM, 25/2*pxPerMM, true);
+        }
+    }
+
+    // setInterval(() => {
+    //     wheel1.rot += 0.1;
+    //     wheel2.rot -= 0.01;
+    //     updateKinematics();
+    //     renderSystem();
+    // }, 20)
+
+    for(wheel1.rot = 0; wheel1.rot <= PI*2; wheel1.rot += 0.1) {
+        for(wheel2.rot = 0; wheel2.rot <= PI*2; wheel2.rot += 0.1) {
+            updateKinematics();
+            renderSystem();
+        }
+    }
+    prevSystemScore = scoreSystem();
+
+    mutateSystem();
+    for(wheel1.rot = 0; wheel1.rot <= PI*2; wheel1.rot += 0.1) {
+        for(wheel2.rot = 0; wheel2.rot <= PI*2; wheel2.rot += 0.1) {
+            updateKinematics();
+            renderSystem();
+        }
+    }
+    console.log(prevSystemScore);
+</script>
