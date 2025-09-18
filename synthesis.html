@@ -96,8 +96,8 @@
 
         for(system.wheel1.rot = 0; system.wheel1.rot <= PI*2; system.wheel1.rot += 0.1) {
             for(system.wheel2.rot = 0; system.wheel2.rot <= PI*2; system.wheel2.rot += 0.1) {
-                updateKinematics(system);
-                renderSystem(system);
+                updateKinematics(system, true);
+                // renderSystem(system);
             }
         }
     }
@@ -107,7 +107,7 @@
     }
 
     //Kinematic References
-    function updateKinematics (sys) {
+    function updateKinematics (sys, setBestScores) {
         sys.wheel1.updatePivot();
         sys.wheel2.updatePivot();
 
@@ -122,8 +122,11 @@
         sys.linkageEndpointY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthBTotal;
 
         for(let y in targetYPoints) {
-            if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
-            targetScores[y] = Math.min(targetScores[y], Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]));
+            if (setBestScores) {
+                targetScores[y] = Math.min(targetScores[y], Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]));
+            } else {
+                if (Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]) == targetScores[y]) renderSystem(sys);
+            }
         }
     }
 
@@ -164,30 +167,12 @@
         }
     }
 
-    // setInterval(() => {
-    //     bestSystem.wheel1.rot += 0.1;
-    //     bestSystem.wheel2.rot -= 0.01;
-    //     // iterateSystem(bestSystem);
-    //     updateKinematics(bestSystem);
-    //     renderSystem(bestSystem);
-    // }, 20)
+    iterateSystem(bestSystem);
+    // ctx.clearRect(0, 0, W, H);
 
-    // iterateSystem(bestSystem);
-    // prevSystemScore = scoreLastIteratedSystem();
-    // console.log("Initial Score: " + prevSystemScore);
-    
-    // function evolve () {
-    //     let mutatedSystem = {...bestSystem};
-    //     mutateSystem(mutatedSystem);
-    //     iterateSystem(mutatedSystem);
-    //     if (scoreLastIteratedSystem() < prevSystemScore) {
-    //         prevSystemScore = scoreLastIteratedSystem();
-    //         bestSystem = mutatedSystem;
-    //         console.log("New Score: " + prevSystemScore);
-    //     } else {
-    //         console.log("No Improvement");
-    //     }
-    //     if (!stopIterating) setTimeout(evolve, 0);
-    // }
-    // evolve();
+    for(bestSystem.wheel1.rot = 0; bestSystem.wheel1.rot <= PI*2; bestSystem.wheel1.rot += 0.1) {
+        for(bestSystem.wheel2.rot = 0; bestSystem.wheel2.rot <= PI*2; bestSystem.wheel2.rot += 0.1) {
+            updateKinematics(bestSystem, false);
+        }
+    }
 </script>
