@@ -66,7 +66,8 @@
     }
 
     // var bestSystem = new System(new Wheel(350, 100, 30, 0), new Wheel(400, 150, 30, 0), 100, 60, 300);
-    var bestSystem = new System(new Wheel(378, 147, 73.5, 0), new Wheel(391, 109, 42, 0), 99, 64, 331);
+    // var bestSystem = new System(new Wheel(378, 147, 73.5, 0), new Wheel(391, 109, 42, 0), 99, 64, 331);
+    var bestSystem = new System(new Wheel(351-20, 116.6, 30, 0), new Wheel(426-20, 136.9, 36.6, 0), 91, 48.9, 345.2);
 
     function getRandom() {
         return (Math.random()-0.5)*15;
@@ -166,14 +167,6 @@
         }
     }
 
-    ctx.strokeStyle = "brown";
-    ctx.lineWidth = 2*pxPerMM;
-    line(0, H, 0, H-264*pxPerMM)
-    line(0, H, shelfDepth_mm*pxPerMM, H)
-    line(0, H-181*pxPerMM, shelfDepth_mm*pxPerMM, H-181*pxPerMM)
-    line(0, H-223*pxPerMM, shelfDepth_mm*pxPerMM, H-223*pxPerMM)
-    line(0, H-264*pxPerMM, shelfDepth_mm*pxPerMM, H-264*pxPerMM)
-
     ctx.strokeStyle = "black";
     ctx.fillStyle = "red";
     circle(bestSystem.wheel1.x*pxPerMM, H-bestSystem.wheel1.y*pxPerMM, bestSystem.wheel1.rad*pxPerMM, true);
@@ -187,4 +180,12 @@
             updateKinematics(bestSystem, false);
         }
     }
+
+    ctx.strokeStyle = "brown";
+    ctx.lineWidth = 2*pxPerMM;
+    line(0, H, 0, H-264*pxPerMM)
+    line(0, H, shelfDepth_mm*pxPerMM, H)
+    line(0, H-181*pxPerMM, shelfDepth_mm*pxPerMM, H-181*pxPerMM)
+    line(0, H-223*pxPerMM, shelfDepth_mm*pxPerMM, H-223*pxPerMM)
+    line(0, H-264*pxPerMM, shelfDepth_mm*pxPerMM, H-264*pxPerMM)
 </script>
