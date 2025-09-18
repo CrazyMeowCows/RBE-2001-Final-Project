@@ -108,6 +108,10 @@
 
     function stop() {
         stopIterating = true;
+        setTimeout(() => {
+            iterateSystem(bestSystem);
+            console.log(bestSystem);
+        }, 1000);
     }
 
     //Kinematic References
