@@ -106,6 +106,10 @@
         return targetScores.reduce((acc, curr) => acc + curr, 0);
     }
 
+    function stop() {
+        stopIterating = true;
+    }
+
     //Kinematic References
     function updateKinematics (sys) {
         sys.wheel1.updatePivot();
@@ -147,7 +151,7 @@
 
         ctx.strokeStyle = "gray";
         ctx.lineWidth = linkageW_px;
-        line(sys.wheel2.pivotX*pxPerMM, H-sys.wheel2.pivotY*pxPerMM, sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM);
+        // line(sys.wheel2.pivotX*pxPerMM, H-sys.wheel2.pivotY*pxPerMM, sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM);
         line(sys.wheel1.pivotX*pxPerMM, H-sys.wheel1.pivotY*pxPerMM, sys.linkagePivotX*pxPerMM, H-sys.linkagePivotY*pxPerMM);
         
         ctx.lineWidth = 2*pxPerMM;
@@ -172,22 +176,22 @@
     //     renderSystem(bestSystem);
     // }, 20)
 
-    // iterateSystem(bestSystem);
-    // prevSystemScore = scoreLastIteratedSystem();
-    // console.log("Initial Score: " + prevSystemScore);
+    iterateSystem(bestSystem);
+    prevSystemScore = scoreLastIteratedSystem();
+    console.log("Initial Score: " + prevSystemScore);
     
-    // function evolve () {
-    //     let mutatedSystem = {...bestSystem};
-    //     mutateSystem(mutatedSystem);
-    //     iterateSystem(mutatedSystem);
-    //     if (scoreLastIteratedSystem() < prevSystemScore) {
-    //         prevSystemScore = scoreLastIteratedSystem();
-    //         bestSystem = mutatedSystem;
-    //         console.log("New Score: " + prevSystemScore);
-    //     } else {
-    //         console.log("No Improvement");
-    //     }
-    //     if (!stopIterating) setTimeout(evolve, 0);
-    // }
-    // evolve();
+    function evolve () {
+        let mutatedSystem = {...bestSystem};
+        mutateSystem(mutatedSystem);
+        iterateSystem(mutatedSystem);
+        if (scoreLastIteratedSystem() < prevSystemScore) {
+            prevSystemScore = scoreLastIteratedSystem();
+            bestSystem = mutatedSystem;
+            console.log("New Score: " + prevSystemScore);
+        } else {
+            console.log("No Improvement");
+        }
+        if (!stopIterating) setTimeout(evolve, 0);
+    }
+    evolve();
 </script>
