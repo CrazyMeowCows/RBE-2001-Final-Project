@@ -53,13 +53,16 @@
     var prevSystemScore = 999;
     var stopIterating = false;
 
+    var colors = ["blue", "cyan" , "orange", "purple"];
+    var colorIterator = 0;
+
     //System Variables----------------------------------------------------------------
-    function System (wheel1, wheel2, lengthA, lengthB, lengthBTotal) {
+    function System (wheel1, wheel2, lengthA, lengthB, lengthATotal) {
         this.wheel1 = wheel1;
         this.wheel2 = wheel2;
         this.lengthA = lengthA;
         this.lengthB = lengthB;
-        this.lengthBTotal = lengthBTotal;
+        this.lengthATotal = lengthATotal;
     }
 
     // var bestSystem = new System(new Wheel(350, 100, 30, 0), new Wheel(400, 150, 30, 0), 100, 60, 300);
@@ -82,22 +85,20 @@
 
         system.lengthA += getRandom();
         system.lengthB += getRandom();
-        system.lengthBTotal += getRandom();
+        system.lengthATotal += getRandom();
 
         system.wheel1.rad = clamp(system.wheel1.rad, 30, 150)
         system.wheel2.rad = clamp(system.wheel2.rad, 30, 150)
         system.lengthA = clamp(system.lengthA, 30, 200)
         system.lengthB = clamp(system.lengthB, 30, 200)
-        system.lengthBTotal = clamp(system.lengthBTotal, 30, 1000)
+        system.lengthATotal = clamp(system.lengthATotal, 30, 1000)
     }
 
     function iterateSystem(system) {
-        ctx.clearRect(0, 0, W, H);
-
         for(system.wheel1.rot = 0; system.wheel1.rot <= PI*2; system.wheel1.rot += 0.1) {
             for(system.wheel2.rot = 0; system.wheel2.rot <= PI*2; system.wheel2.rot += 0.1) {
                 updateKinematics(system, true);
-                // renderSystem(system);
+                renderSystem(system, true);
             }
         }
     }
@@ -118,44 +119,42 @@
         sys.linkagePivotX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthA;
         sys.linkagePivotY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthA;
 
-        sys.linkageEndpointX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthBTotal;
-        sys.linkageEndpointY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthBTotal;
+        sys.linkageEndpointX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthATotal;
+        sys.linkageEndpointY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthATotal;
 
         for(let y in targetYPoints) {
             if (setBestScores) {
+                if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
                 targetScores[y] = Math.min(targetScores[y], Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]));
             } else {
-                if (Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]) == targetScores[y]) renderSystem(sys);
+                if (Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]) == targetScores[y]) 
+                renderSystem(sys, false);
             }
         }
     }
 
     //Drawing------------------------------------------------------------------
-    function renderSystem(sys) {
-        // ctx.clearRect(0, 0, W, H);
+    function renderSystem(sys, onlyShowEndpoint) {
+        if (onlyShowEndpoint) {
+            ctx.lineWidth = 2*pxPerMM;
+            ctx.strokeStyle = "lightgray";
+            ctx.fillStyle = "lightgray";
+            circle(sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM, pivotRad_px, true);
+            return;
+        }
 
-        ctx.strokeStyle = "brown";
-        ctx.lineWidth = 2*pxPerMM;
-        line(0, H, 0, H-264*pxPerMM)
-        line(0, H, shelfDepth_mm*pxPerMM, H)
-        line(0, H-181*pxPerMM, shelfDepth_mm*pxPerMM, H-181*pxPerMM)
-        line(0, H-223*pxPerMM, shelfDepth_mm*pxPerMM, H-223*pxPerMM)
-        line(0, H-264*pxPerMM, shelfDepth_mm*pxPerMM, H-264*pxPerMM)
-
-        ctx.strokeStyle = "black";
-        ctx.fillStyle = "red";
-        circle(sys.wheel1.x*pxPerMM, H-sys.wheel1.y*pxPerMM, sys.wheel1.rad*pxPerMM, true);
-        ctx.fillStyle = "green";
-        circle(sys.wheel2.x*pxPerMM, H-sys.wheel2.y*pxPerMM, sys.wheel2.rad*pxPerMM, true);
-
-        ctx.strokeStyle = "gray";
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = colors[colorIterator];
         ctx.lineWidth = linkageW_px;
         line(sys.wheel2.pivotX*pxPerMM, H-sys.wheel2.pivotY*pxPerMM, sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM);
         line(sys.wheel1.pivotX*pxPerMM, H-sys.wheel1.pivotY*pxPerMM, sys.linkagePivotX*pxPerMM, H-sys.linkagePivotY*pxPerMM);
-        
+        ctx.globalAlpha = 1;
+
         ctx.lineWidth = 2*pxPerMM;
         ctx.strokeStyle = "black";
-        ctx.fillStyle = "lightgray";
+        ctx.fillStyle = colors[colorIterator];
+                colorIterator++;
+
         circle(sys.wheel1.pivotX*pxPerMM, H-sys.wheel1.pivotY*pxPerMM, pivotRad_px, true);
         circle(sys.wheel2.pivotX*pxPerMM, H-sys.wheel2.pivotY*pxPerMM, pivotRad_px, true);
         circle(sys.linkagePivotX*pxPerMM, H-sys.linkagePivotY*pxPerMM, pivotRad_px, true);
@@ -167,8 +166,21 @@
         }
     }
 
+    ctx.strokeStyle = "brown";
+    ctx.lineWidth = 2*pxPerMM;
+    line(0, H, 0, H-264*pxPerMM)
+    line(0, H, shelfDepth_mm*pxPerMM, H)
+    line(0, H-181*pxPerMM, shelfDepth_mm*pxPerMM, H-181*pxPerMM)
+    line(0, H-223*pxPerMM, shelfDepth_mm*pxPerMM, H-223*pxPerMM)
+    line(0, H-264*pxPerMM, shelfDepth_mm*pxPerMM, H-264*pxPerMM)
+
+    ctx.strokeStyle = "black";
+    ctx.fillStyle = "red";
+    circle(bestSystem.wheel1.x*pxPerMM, H-bestSystem.wheel1.y*pxPerMM, bestSystem.wheel1.rad*pxPerMM, true);
+    ctx.fillStyle = "green";
+    circle(bestSystem.wheel2.x*pxPerMM, H-bestSystem.wheel2.y*pxPerMM, bestSystem.wheel2.rad*pxPerMM, true);
+
     iterateSystem(bestSystem);
-    // ctx.clearRect(0, 0, W, H);
 
     for(bestSystem.wheel1.rot = 0; bestSystem.wheel1.rot <= PI*2; bestSystem.wheel1.rot += 0.1) {
         for(bestSystem.wheel2.rot = 0; bestSystem.wheel2.rot <= PI*2; bestSystem.wheel2.rot += 0.1) {
