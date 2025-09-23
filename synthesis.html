@@ -122,6 +122,11 @@
         return targetScores.reduce((acc, curr) => acc + curr, 0);
     }
 
+//     function dumpSys(sys) {
+// //    var bestSystem = new System(new Wheel(331, 116.6, 40, 0, 110), new Wheel(406, 136.9, 36.6, 0, 45), 91, 48.9, 345.2);
+//         console.log("var bestSystem = new System(new Wheel("+sys.wheel1.x+","+sys.wheel1.y+","+sys.wheel1.rad+", 0,"+sys.wheel1.minRotDeg+"), new Wheel("circle, 136.9, 36.6, 0, 45), 91, 48.9, 345.2);)
+//     }
+
     function stop() {
         stopIterating = true;
         setTimeout(() => {
