@@ -69,10 +69,13 @@
     var bestSystem = new System(new Wheel(351-20, 116.6, 30, 0, 110), new Wheel(426-20, 136.9, 36.6, 0, 45), 91, 48.9, 300);
 
     function getRandom() {
-        return (Math.random()-0.5)*15;
+        return (Math.random()-0.5)*30;
     }
     function clamp(x, min, max) {
         return Math.max(Math.min(x, max), min);
+    }
+    function rad(deg) {
+        return deg*PI/180;
     }
 
     function mutateSystem(system) {
@@ -89,8 +92,10 @@
         system.lengthB += getRandom();
         system.lengthBTotal += getRandom();
 
-        system.wheel1.rad = clamp(system.wheel1.rad, 30, 150)
-        system.wheel2.rad = clamp(system.wheel2.rad, 30, 150)
+        system.wheel1.rad = clamp(system.wheel1.rad, 30, 60)
+        system.wheel2.rad = clamp(system.wheel2.rad, 30, 60)
+        system.wheel1.y = clamp(system.wheel1.y, 50, 200)
+        system.wheel2.y = clamp(system.wheel2.y, 50, 200)
         system.lengthA = clamp(system.lengthA, 30, 200)
         system.lengthB = clamp(system.lengthB, 30, 200)
         system.lengthBTotal = clamp(system.lengthBTotal, 30, 1000)
@@ -136,7 +141,8 @@
 
         for(let y in targetYPoints) {
             if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
-            
+            if (sys.wheel1.rot > rad(sys.wheel1.minRotDeg+120) || sys.wheel1.rot < rad(sys.wheel1.minRotDeg)) return;
+            if (sys.wheel2.rot > rad(sys.wheel2.minRotDeg+120) || sys.wheel2.rot < rad(sys.wheel2.minRotDeg)) return;
             targetScores[y] = Math.min(targetScores[y], Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]));
         }
     }
@@ -144,6 +150,9 @@
     //Drawing------------------------------------------------------------------
     function renderSystem(sys) {
         // ctx.clearRect(0, 0, W, H);
+        
+        if (sys.wheel1.rot > rad(sys.wheel1.minRotDeg+120) || sys.wheel1.rot < rad(sys.wheel1.minRotDeg)) return;
+        if (sys.wheel2.rot > rad(sys.wheel2.minRotDeg+120) || sys.wheel2.rot < rad(sys.wheel2.minRotDeg)) return;
 
         ctx.strokeStyle = "brown";
         ctx.lineWidth = 2*pxPerMM;
