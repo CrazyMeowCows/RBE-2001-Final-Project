@@ -24,6 +24,9 @@
     function lerp (x, y, i) {
         return x * (1 - i) + y * i;
     }
+    function rad (deg) {
+        return deg*PI/180
+    }
     function Wheel (x, y, rad, rot) {
         this.x = x;
         this.y = y;
@@ -148,7 +151,8 @@
         for(let i in generatedAnimPoints) {
             if (mode == "findScores") {
                 if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
-                if (sys.wheel1.rot > 3*PI/2 || sys.wheel1.rot < PI/2) return;
+                if (sys.wheel1.rot > rad(250) || sys.wheel1.rot < rad(250-120)) return;
+                if (sys.wheel2.rot > rad(45+120) || sys.wheel2.rot < rad(45)) return;
                 targetScores[i] = Math.min(targetScores[i], Math.hypot(sys.linkageEndpointX-generatedAnimPoints[i].x, sys.linkageEndpointY-generatedAnimPoints[i].y));
             } else if (mode == "findSysAtPoints") {
                 if (Math.hypot(sys.linkageEndpointX-generatedAnimPoints[i].x, sys.linkageEndpointY-generatedAnimPoints[i].y) == targetScores[i]) {
