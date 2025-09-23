@@ -21,6 +21,10 @@
         ctx.lineTo(x2, y2);
         ctx.stroke();
     }
+
+    function rad (deg) {
+        return deg*PI/180
+    }
     function Wheel (x, y, rad, rot) {
         this.x = x;
         this.y = y;
@@ -137,9 +141,14 @@
         }
     }
 
+    let w1Min = 110;
+    let w2Min = 45;
+
     //Drawing------------------------------------------------------------------
     function renderSystem(sys, onlyShowEndpoint) {
         if (onlyShowEndpoint) {
+            if (sys.wheel1.rot > rad(w1Min+120) || sys.wheel1.rot < rad(w1Min)) return;
+            if (sys.wheel2.rot > rad(w2Min+120) || sys.wheel2.rot < rad(w2Min)) return;
             ctx.lineWidth = 2*pxPerMM;
             ctx.strokeStyle = "lightgray";
             ctx.fillStyle = "lightgray";
