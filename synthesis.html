@@ -21,6 +21,9 @@
         ctx.lineTo(x2, y2);
         ctx.stroke();
     }
+    function lerp (x, y, i) {
+        x * (1 - i) + y * i;
+    }
     function Wheel (x, y, rad, rot) {
         this.x = x;
         this.y = y;
@@ -34,6 +37,13 @@
         }
         this.updatePivot();
     }
+    function Point (x, y) {
+        this.x = x;
+        this.y = y;
+        
+        this.pxX = x*pxPerMM;
+        this.pxY = y*pxPerMM;
+    }
 
     //Constants----------------------------------------------------------------
     const W = 1400;
@@ -42,19 +52,45 @@
     const pxPerMM = 1400/500;
     const shelfDepth_mm = 60;
     const pivotRad_px = 15;
+    const boxSize_mm = 25;
 
     const PI = Math.PI;
     const linkageW_px = 20;
 
     const targetX = shelfDepth_mm-25/2;
-    const targetYPoints = [25/2, 182+25/2, 224+25/2, 266+25/2];
-    
-    var targetScores = [999, 999, 999, 999];
-    var prevSystemScore = 999;
-    var stopIterating = false;
+    const targetYPoints = [boxSize_mm/2, 182+boxSize_mm/2, 224+boxSize_mm/2, 266+boxSize_mm/2];
 
-    var colors = ["blue", "cyan" , "orange", "purple"];
-    var colorIterator = 0;
+    const keyframeX = shelfDepth_mm+boxSize_mm;
+    const keyframeYPoints = [boxSize_mm/2, 182+boxSize_mm/2, 224+boxSize_mm/2, 266+boxSize_mm/2];
+
+    const targetPoints = [
+        new Point(targetX, targetYPoints[0]), //0
+        new Point(targetX, targetYPoints[1]), 
+        new Point(targetX, targetYPoints[2]), 
+        new Point(targetX, targetYPoints[3]),
+        new Point(keyframeX, keyframeYPoints[0]), //4
+        new Point(keyframeX, keyframeYPoints[1]), 
+        new Point(keyframeX, keyframeYPoints[2]), 
+        new Point(keyframeX, keyframeYPoints[3]), 
+    ]
+
+    const keyframes = [
+        targetPoints[0],
+        targetPoints[4],
+        targetPoints[5],
+        targetPoints[1],
+        targetPoints[5],
+        targetPoints[6],
+        targetPoints[2],
+        targetPoints[6],
+        targetPoints[7],
+        targetPoints[3],
+    ]
+    var sysAtKeyframes = Array(targetPoints.length);
+    var currentKeyframe = 0;
+    var interpolation = 0;
+    
+    var targetScores = [999, 999, 999, 999, 999, 999, 999, 999];
 
     //System Variables----------------------------------------------------------------
     function System (wheel1, wheel2, lengthA, lengthB, lengthATotal) {
@@ -68,50 +104,30 @@
     // var bestSystem = new System(new Wheel(350, 100, 30, 0), new Wheel(400, 150, 30, 0), 100, 60, 300);
     // var bestSystem = new System(new Wheel(378, 147, 73.5, 0), new Wheel(391, 109, 42, 0), 99, 64, 331);
     // var bestSystem = new System(new Wheel(331, 116.6, 30, 0), new Wheel(406, 136.9, 36.6, 0), 91, 48.9, 345.2); //Long linkage
-    var bestSystem = new System(new Wheel(331, 116.6, 40, 0), new Wheel(406, 136.9, 36.6, 0), 91, 48.9, 345.2); //Long linkage Mod1
+    var system = new System(new Wheel(331, 116.6, 40, 0), new Wheel(406, 136.9, 36.6, 0), 91, 48.9, 345.2); //Long linkage Mod1
     // var bestSystem = new System(new Wheel(331, 116.6, 30, 0), new Wheel(406, 136.9, 36.6, 0), 91, 40, 345.2); //Long linkage Mod2
     // var bestSystem = new System(new Wheel(263.7, 89.1, 40.5, 0), new Wheel(380, 139.4, 54, 0), 93, 48.6, 308); //Short Linkage
 
-    function getRandom() {
-        return (Math.random()-0.5)*15;
-    }
-    function clamp(x, min, max) {
-        return Math.max(Math.min(x, max), min);
-    }
-
-    function mutateSystem(system) {
-        system.wheel1.x += getRandom();
-        system.wheel1.y += getRandom();
-        system.wheel1.rad += getRandom();
-        system.wheel2.x += getRandom();
-        system.wheel2.y += getRandom();
-        system.wheel2.rad += getRandom();
-
-        system.lengthA += getRandom();
-        system.lengthB += getRandom();
-        system.lengthATotal += getRandom();
-
-        system.wheel1.rad = clamp(system.wheel1.rad, 30, 150)
-        system.wheel2.rad = clamp(system.wheel2.rad, 30, 150)
-        system.lengthA = clamp(system.lengthA, 30, 200)
-        system.lengthB = clamp(system.lengthB, 30, 200)
-        system.lengthATotal = clamp(system.lengthATotal, 30, 1000)
-    }
-
-    function iterateSystem(system) {
+    function findSysAtKeyframes(system) {
         for(system.wheel1.rot = 0; system.wheel1.rot <= PI*2; system.wheel1.rot += 0.1) {
             for(system.wheel2.rot = 0; system.wheel2.rot <= PI*2; system.wheel2.rot += 0.1) {
                 updateKinematics(system, true);
-                renderSystem(system, true);
+            }
+        }
+        for(system.wheel1.rot = 0; system.wheel1.rot <= PI*2; system.wheel1.rot += 0.1) {
+            for(system.wheel2.rot = 0; system.wheel2.rot <= PI*2; system.wheel2.rot += 0.1) {
+                updateKinematics(system, false);
             }
         }
     }
 
-    function scoreLastIteratedSystem(system) {
-        return targetScores.reduce((acc, curr) => acc + curr, 0);
+    function interpolateSystems(sys1, sys2, i) {
+        let iSys = {...system};
+        iSys.wheel1.rot = lerp(sys1.wheel1.rot, sys2.wheel1.rot, i);
+        iSys.wheel2.rot = lerp(sys1.wheel2.rot, sys2.wheel2.rot, i);
+        return iSys;
     }
 
-    //Kinematic References
     function updateKinematics (sys, setBestScores) {
         sys.wheel1.updatePivot();
         sys.wheel2.updatePivot();
@@ -126,73 +142,71 @@
         sys.linkageEndpointX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthATotal;
         sys.linkageEndpointY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthATotal;
 
-        for(let y in targetYPoints) {
+        for(let i in targetPoints) {
             if (setBestScores) {
                 if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
-                targetScores[y] = Math.min(targetScores[y], Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]));
+                targetScores[i] = Math.min(targetScores[i], Math.hypot(sys.linkageEndpointX-targetPoints[i].x, sys.linkageEndpointY-targetPoints[i].y));
             } else {
-                if (Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]) == targetScores[y]) 
-                renderSystem(sys, false);
+                if (Math.hypot(sys.linkageEndpointX-targetPoints[i].x, sys.linkageEndpointY-targetPoints[i].y) == targetScores[i]) {
+                    sysAtKeyframes[i] = {...sys};
+                }
             }
         }
     }
 
     //Drawing------------------------------------------------------------------
-    function renderSystem(sys, onlyShowEndpoint) {
-        if (onlyShowEndpoint) {
-            ctx.lineWidth = 2*pxPerMM;
-            ctx.strokeStyle = "lightgray";
-            ctx.fillStyle = "lightgray";
-            circle(sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM, pivotRad_px, true);
-            return;
-        }
+    function renderSystem(sys) {
+        ctx.clearRect(0, 0, W, H);
 
+        //Draw the wheels
+        ctx.strokeStyle = "black";
+        ctx.fillStyle = "red";
+        circle(sys.wheel1.x*pxPerMM, H-sys.wheel1.y*pxPerMM, sys.wheel1.rad*pxPerMM, true);
+        ctx.fillStyle = "green";
+        circle(sys.wheel2.x*pxPerMM, H-sys.wheel2.y*pxPerMM, sys.wheel2.rad*pxPerMM, true);
+        ctx.fillStyle = "black";
+        circle(sys.wheel1.x*pxPerMM, H-sys.wheel1.y*pxPerMM, pivotRad_px/3, true);
+        circle(sys.wheel2.x*pxPerMM, H-sys.wheel2.y*pxPerMM, pivotRad_px/3, true);
+
+        //Set the color
+        ctx.strokeStyle = "cyan";
+        ctx.fillStyle = "cyan";
+
+        //Draw the linkages
         ctx.globalAlpha = 0.5;
-        ctx.strokeStyle = colors[colorIterator];
         ctx.lineWidth = linkageW_px;
         line(sys.wheel2.pivotX*pxPerMM, H-sys.wheel2.pivotY*pxPerMM, sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM);
         line(sys.wheel1.pivotX*pxPerMM, H-sys.wheel1.pivotY*pxPerMM, sys.linkagePivotX*pxPerMM, H-sys.linkagePivotY*pxPerMM);
         ctx.globalAlpha = 1;
 
+        //Draw the pivots
         ctx.lineWidth = 2*pxPerMM;
         ctx.strokeStyle = "black";
-        ctx.fillStyle = colors[colorIterator];
-                colorIterator++;
-
         circle(sys.wheel1.pivotX*pxPerMM, H-sys.wheel1.pivotY*pxPerMM, pivotRad_px, true);
         circle(sys.wheel2.pivotX*pxPerMM, H-sys.wheel2.pivotY*pxPerMM, pivotRad_px, true);
         circle(sys.linkagePivotX*pxPerMM, H-sys.linkagePivotY*pxPerMM, pivotRad_px, true);
         circle(sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM, pivotRad_px, true);
 
-        ctx.fillStyle = "lime";
+        //Draw the targets and keyframes
+        ctx.fillStyle = "red";
         for(let y in targetYPoints) {
-            circle(targetX*pxPerMM, H-targetYPoints[y]*pxPerMM, 25/2*pxPerMM, true);
+            ctx.fillRect((targetX-boxSize_mm/2)*pxPerMM, H-(targetYPoints[y]+boxSize_mm/2)*pxPerMM, boxSize_mm*pxPerMM, boxSize_mm*pxPerMM);
         }
+        ctx.fillStyle = "lime";
+        for(let y in keyframeYPoints) {
+            circle(keyframeX*pxPerMM, H-keyframeYPoints[y]*pxPerMM, 10, true);
+        }
+
+        //Draw the shelf
+        ctx.strokeStyle = "brown";
+        ctx.lineWidth = 2*pxPerMM;
+        line(0, H, 0, H-264*pxPerMM)
+        line(0, H, shelfDepth_mm*pxPerMM, H)
+        line(0, H-181*pxPerMM, shelfDepth_mm*pxPerMM, H-181*pxPerMM)
+        line(0, H-223*pxPerMM, shelfDepth_mm*pxPerMM, H-223*pxPerMM)
+        line(0, H-264*pxPerMM, shelfDepth_mm*pxPerMM, H-265*pxPerMM)
     }
 
-    ctx.strokeStyle = "black";
-    ctx.fillStyle = "red";
-    circle(bestSystem.wheel1.x*pxPerMM, H-bestSystem.wheel1.y*pxPerMM, bestSystem.wheel1.rad*pxPerMM, true);
-    ctx.fillStyle = "green";
-    circle(bestSystem.wheel2.x*pxPerMM, H-bestSystem.wheel2.y*pxPerMM, bestSystem.wheel2.rad*pxPerMM, true);
-    ctx.fillStyle = "black";
-    circle(bestSystem.wheel1.x*pxPerMM, H-bestSystem.wheel1.y*pxPerMM, pivotRad_px/3, true);
-    circle(bestSystem.wheel2.x*pxPerMM, H-bestSystem.wheel2.y*pxPerMM, pivotRad_px/3, true);
-    
-
-    iterateSystem(bestSystem);
-
-    for(bestSystem.wheel1.rot = 0; bestSystem.wheel1.rot <= PI*2; bestSystem.wheel1.rot += 0.1) {
-        for(bestSystem.wheel2.rot = 0; bestSystem.wheel2.rot <= PI*2; bestSystem.wheel2.rot += 0.1) {
-            updateKinematics(bestSystem, false);
-        }
-    }
-
-    ctx.strokeStyle = "brown";
-    ctx.lineWidth = 2*pxPerMM;
-    line(0, H, 0, H-264*pxPerMM)
-    line(0, H, shelfDepth_mm*pxPerMM, H)
-    line(0, H-181*pxPerMM, shelfDepth_mm*pxPerMM, H-181*pxPerMM)
-    line(0, H-223*pxPerMM, shelfDepth_mm*pxPerMM, H-223*pxPerMM)
-    line(0, H-264*pxPerMM, shelfDepth_mm*pxPerMM, H-264*pxPerMM)
+    findSysAtKeyframes(system);
+    renderSystem(sysAtKeyframes[0]);
 </script>
