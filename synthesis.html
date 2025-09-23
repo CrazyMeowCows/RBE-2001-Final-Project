@@ -66,10 +66,12 @@
 
     // var bestSystem = new System(new Wheel(350, 100, 30, 0), new Wheel(400, 150, 30, 0), 100, 60, 300);
     // var bestSystem = new System(new Wheel(378, 147, 73.5, 0), new Wheel(391, 109, 42, 0), 99, 64, 331);
-    var bestSystem = new System(new Wheel(351-20, 116.6, 30, 0, 110), new Wheel(426-20, 136.9, 36.6, 0, 45), 91, 48.9, 300);
+    // var bestSystem = new System(new Wheel(351-20, 116.6, 30, 0, 110), new Wheel(426-20, 136.9, 36.6, 0, 45), 91, 48.9, 300);
+    var bestSystem = new System(new Wheel(331, 116.6, 40, 0, 110), new Wheel(406, 136.9, 36.6, 0, 45), 91, 48.9, 345.2); //Long linkage Mod1
+
 
     function getRandom() {
-        return (Math.random()-0.5)*30;
+        return (Math.random()-0.5)*15;
     }
     function clamp(x, min, max) {
         return Math.max(Math.min(x, max), min);
@@ -82,20 +84,24 @@
         system.wheel1.x += getRandom();
         system.wheel1.y += getRandom();
         system.wheel1.rad += getRandom();
-        system.wheel1.minRotDeg += getRandom();
+        system.wheel1.minRotDeg += getRandom()*5;
         system.wheel2.x += getRandom();
         system.wheel2.y += getRandom();
         system.wheel2.rad += getRandom();
-        system.wheel2.minRotDeg += getRandom();
+        system.wheel2.minRotDeg += getRandom()*5;
 
         system.lengthA += getRandom();
         system.lengthB += getRandom();
         system.lengthBTotal += getRandom();
 
+        system.wheel1.minRotDeg = clamp(system.wheel1.minRotDeg, 0, 360-120)
+        system.wheel2.minRotDeg = clamp(system.wheel2.minRotDeg, 0, 360-120)
         system.wheel1.rad = clamp(system.wheel1.rad, 30, 60)
         system.wheel2.rad = clamp(system.wheel2.rad, 30, 60)
         system.wheel1.y = clamp(system.wheel1.y, 50, 200)
         system.wheel2.y = clamp(system.wheel2.y, 50, 200)
+        system.wheel1.x = clamp(system.wheel1.x, 50, 500)
+        system.wheel2.x = clamp(system.wheel2.x, 50, 500)
         system.lengthA = clamp(system.lengthA, 30, 200)
         system.lengthB = clamp(system.lengthB, 30, 200)
         system.lengthBTotal = clamp(system.lengthBTotal, 30, 1000)
@@ -203,7 +209,8 @@
         let mutatedSystem = {...bestSystem};
         mutateSystem(mutatedSystem);
         iterateSystem(mutatedSystem);
-        if (scoreLastIteratedSystem() < prevSystemScore) {
+        if (stopIterating) return;
+        if (scoreLastIteratedSystem() < prevSystemScore && !isNaN(mutatedSystem.linkageEndpointX+mutatedSystem.linkageEndpointY)) {
             prevSystemScore = scoreLastIteratedSystem();
             bestSystem = mutatedSystem;
             console.log("New Score: " + prevSystemScore);
