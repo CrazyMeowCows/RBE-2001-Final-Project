@@ -25,12 +25,13 @@
     function rad (deg) {
         return deg*PI/180
     }
-    function Wheel (x, y, rad, rot) {
+    function Wheel (x, y, rad, rot, minRotDeg) {
         this.x = x;
         this.y = y;
         
         this.rad = rad;
         this.rot = rot;
+        this.minRotDeg = minRotDeg;
 
         this.updatePivot = ()=>{
             this.pivotX = this.x+Math.cos(this.rot)*this.rad;
@@ -72,9 +73,10 @@
     // var bestSystem = new System(new Wheel(350, 100, 30, 0), new Wheel(400, 150, 30, 0), 100, 60, 300);
     // var bestSystem = new System(new Wheel(378, 147, 73.5, 0), new Wheel(391, 109, 42, 0), 99, 64, 331);
     // var bestSystem = new System(new Wheel(331, 116.6, 30, 0), new Wheel(406, 136.9, 36.6, 0), 91, 48.9, 345.2); //Long linkage
-    var bestSystem = new System(new Wheel(331, 116.6, 40, 0), new Wheel(406, 136.9, 36.6, 0), 91, 48.9, 345.2); //Long linkage Mod1
+    // var bestSystem = new System(new Wheel(331, 116.6, 40, 0), new Wheel(406, 136.9, 36.6, 0), 91, 48.9, 345.2); //Long linkage Mod1
     // var bestSystem = new System(new Wheel(331, 116.6, 30, 0), new Wheel(406, 136.9, 36.6, 0), 91, 40, 345.2); //Long linkage Mod2
     // var bestSystem = new System(new Wheel(263.7, 89.1, 40.5, 0), new Wheel(380, 139.4, 54, 0), 93, 48.6, 308); //Short Linkage
+    var bestSystem = new System(new Wheel(301.6, 137.6, 60, 0, 212), new Wheel(406, 136.9, 36.6, 0, 65.8), 67, 47, 355.7); //Long linkage Mod1
 
     function getRandom() {
         return (Math.random()-0.5)*15;
@@ -141,14 +143,11 @@
         }
     }
 
-    let w1Min = 110;
-    let w2Min = 45;
-
     //Drawing------------------------------------------------------------------
     function renderSystem(sys, onlyShowEndpoint) {
         if (onlyShowEndpoint) {
-            if (sys.wheel1.rot > rad(w1Min+120) || sys.wheel1.rot < rad(w1Min)) return;
-            if (sys.wheel2.rot > rad(w2Min+120) || sys.wheel2.rot < rad(w2Min)) return;
+            if (sys.wheel1.rot > rad(sys.wheel1.minRotDeg+120) || sys.wheel1.rot < rad(sys.wheel1.minRotDeg)) return;
+            if (sys.wheel2.rot > rad(sys.wheel2.minRotDeg+120) || sys.wheel2.rot < rad(sys.wheel2.minRotDeg)) return;
             ctx.lineWidth = 2*pxPerMM;
             ctx.strokeStyle = "lightgray";
             ctx.fillStyle = "lightgray";
