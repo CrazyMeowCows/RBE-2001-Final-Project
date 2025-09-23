@@ -22,7 +22,7 @@
         ctx.stroke();
     }
     function lerp (x, y, i) {
-        x * (1 - i) + y * i;
+        return x * (1 - i) + y * i;
     }
     function Wheel (x, y, rad, rot) {
         this.x = x;
@@ -40,9 +40,6 @@
     function Point (x, y) {
         this.x = x;
         this.y = y;
-        
-        this.pxX = x*pxPerMM;
-        this.pxY = y*pxPerMM;
     }
 
     //Constants----------------------------------------------------------------
@@ -72,25 +69,27 @@
         new Point(keyframeX, keyframeYPoints[1]), 
         new Point(keyframeX, keyframeYPoints[2]), 
         new Point(keyframeX, keyframeYPoints[3]), 
-    ]
+    ];
+
+    var generatedAnimPoints = [];
 
     const keyframes = [
-        targetPoints[0],
-        targetPoints[4],
-        targetPoints[5],
-        targetPoints[1],
-        targetPoints[5],
-        targetPoints[6],
-        targetPoints[2],
-        targetPoints[6],
-        targetPoints[7],
-        targetPoints[3],
-    ]
-    var sysAtKeyframes = Array(targetPoints.length);
+        0,
+        4,
+        5,
+        1,
+        5,
+        6,
+        2,
+        6,
+        7,
+        3,
+    ];
+    var sysAtPoints = Array(targetPoints.length);
     var currentKeyframe = 0;
     var interpolation = 0;
     
-    var targetScores = [999, 999, 999, 999, 999, 999, 999, 999];
+    var targetScores = [];
 
     //System Variables----------------------------------------------------------------
     function System (wheel1, wheel2, lengthA, lengthB, lengthATotal) {
@@ -108,15 +107,15 @@
     // var bestSystem = new System(new Wheel(331, 116.6, 30, 0), new Wheel(406, 136.9, 36.6, 0), 91, 40, 345.2); //Long linkage Mod2
     // var bestSystem = new System(new Wheel(263.7, 89.1, 40.5, 0), new Wheel(380, 139.4, 54, 0), 93, 48.6, 308); //Short Linkage
 
-    function findSysAtKeyframes(system) {
+    function findSysAtPoints(system) {
         for(system.wheel1.rot = 0; system.wheel1.rot <= PI*2; system.wheel1.rot += 0.1) {
             for(system.wheel2.rot = 0; system.wheel2.rot <= PI*2; system.wheel2.rot += 0.1) {
-                updateKinematics(system, true);
+                updateKinematics(system, "findScores");
             }
         }
         for(system.wheel1.rot = 0; system.wheel1.rot <= PI*2; system.wheel1.rot += 0.1) {
             for(system.wheel2.rot = 0; system.wheel2.rot <= PI*2; system.wheel2.rot += 0.1) {
-                updateKinematics(system, false);
+                updateKinematics(system, "findSysAtPoints");
             }
         }
     }
@@ -125,10 +124,14 @@
         let iSys = {...system};
         iSys.wheel1.rot = lerp(sys1.wheel1.rot, sys2.wheel1.rot, i);
         iSys.wheel2.rot = lerp(sys1.wheel2.rot, sys2.wheel2.rot, i);
+        updateKinematics(iSys, "none");
         return iSys;
     }
+    function interpolatePoints(p1, p2, i) {
+        return new Point(lerp(p1.x, p2.x, i), lerp(p1.y, p2.y, i));
+    }
 
-    function updateKinematics (sys, setBestScores) {
+    function updateKinematics (sys, mode) {
         sys.wheel1.updatePivot();
         sys.wheel2.updatePivot();
 
@@ -142,13 +145,13 @@
         sys.linkageEndpointX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthATotal;
         sys.linkageEndpointY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthATotal;
 
-        for(let i in targetPoints) {
-            if (setBestScores) {
+        for(let i in generatedAnimPoints) {
+            if (mode == "findScores") {
                 if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
-                targetScores[i] = Math.min(targetScores[i], Math.hypot(sys.linkageEndpointX-targetPoints[i].x, sys.linkageEndpointY-targetPoints[i].y));
-            } else {
-                if (Math.hypot(sys.linkageEndpointX-targetPoints[i].x, sys.linkageEndpointY-targetPoints[i].y) == targetScores[i]) {
-                    sysAtKeyframes[i] = {...sys};
+                targetScores[i] = Math.min(targetScores[i], Math.hypot(sys.linkageEndpointX-generatedAnimPoints[i].x, sys.linkageEndpointY-generatedAnimPoints[i].y));
+            } else if (mode == "findSysAtPoints") {
+                if (Math.hypot(sys.linkageEndpointX-generatedAnimPoints[i].x, sys.linkageEndpointY-generatedAnimPoints[i].y) == targetScores[i]) {
+                    sysAtPoints[i] = JSON.parse(JSON.stringify(sys));
                 }
             }
         }
@@ -207,6 +210,37 @@
         line(0, H-264*pxPerMM, shelfDepth_mm*pxPerMM, H-265*pxPerMM)
     }
 
-    findSysAtKeyframes(system);
-    renderSystem(sysAtKeyframes[0]);
+    function generateAnimPoints() {
+        let newPoint = interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation);
+        generatedAnimPoints.push(newPoint);
+        targetScores.push(999);
+
+        interpolation += 0.01;
+        if(interpolation > 1) {
+            interpolation = 0;
+            currentKeyframe++;
+        }
+        if (currentKeyframe < keyframes.length-1) generateAnimPoints();
+    }
+    generateAnimPoints();
+    currentKeyframe = 0;
+
+    findSysAtPoints(system);
+
+    console.log("Done")
+
+    function animate() {
+        let sys = interpolateSystems(sysAtPoints[currentKeyframe], sysAtPoints[currentKeyframe+1], interpolation);
+        renderSystem(sys);
+        // console.log(sys)
+
+        // interpolation += 0.01;
+        // if(interpolation >= 1) {
+        //     interpolation = 0;
+            currentKeyframe++;
+        // }
+        if (currentKeyframe >= sysAtPoints.length-1) currentKeyframe = 0;
+        requestAnimationFrame(animate);
+    }
+    animate();
 </script>
