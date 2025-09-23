@@ -21,12 +21,14 @@
         ctx.lineTo(x2, y2);
         ctx.stroke();
     }
-    function Wheel (x, y, rad, rot) {
+    function Wheel (x, y, rad, rot, minRotDeg) {
         this.x = x;
         this.y = y;
         
         this.rad = rad;
         this.rot = rot;
+
+        this.minRotDeg = minRotDeg;
 
         this.updatePivot = ()=>{
             this.pivotX = this.x+Math.cos(this.rot)*this.rad;
@@ -64,7 +66,7 @@
 
     // var bestSystem = new System(new Wheel(350, 100, 30, 0), new Wheel(400, 150, 30, 0), 100, 60, 300);
     // var bestSystem = new System(new Wheel(378, 147, 73.5, 0), new Wheel(391, 109, 42, 0), 99, 64, 331);
-    var bestSystem = new System(new Wheel(351-20, 116.6, 30, 0), new Wheel(426-20, 136.9, 36.6, 0), 91, 48.9, 300);
+    var bestSystem = new System(new Wheel(351-20, 116.6, 30, 0, 110), new Wheel(426-20, 136.9, 36.6, 0, 45), 91, 48.9, 300);
 
     function getRandom() {
         return (Math.random()-0.5)*15;
@@ -77,9 +79,11 @@
         system.wheel1.x += getRandom();
         system.wheel1.y += getRandom();
         system.wheel1.rad += getRandom();
+        system.wheel1.minRotDeg += getRandom();
         system.wheel2.x += getRandom();
         system.wheel2.y += getRandom();
         system.wheel2.rad += getRandom();
+        system.wheel2.minRotDeg += getRandom();
 
         system.lengthA += getRandom();
         system.lengthB += getRandom();
@@ -132,6 +136,7 @@
 
         for(let y in targetYPoints) {
             if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
+            
             targetScores[y] = Math.min(targetScores[y], Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]));
         }
     }
