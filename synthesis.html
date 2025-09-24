@@ -27,12 +27,13 @@
     function rad (deg) {
         return deg*PI/180
     }
-    function Wheel (x, y, rad, rot) {
+    function Wheel (x, y, rad, rot, minRotDeg) {
         this.x = x;
         this.y = y;
         
         this.rad = rad;
         this.rot = rot;
+        this.minRotDeg = minRotDeg;
 
         this.updatePivot = ()=>{
             this.pivotX = this.x+Math.cos(this.rot)*this.rad;
@@ -110,18 +111,20 @@
     // var bestSystem = new System(new Wheel(263.7, 89.1, 40.5, 0), new Wheel(380, 139.4, 54, 0), 93, 48.6, 308); //Short Linkage
     
     // var system = new System(new Wheel(331, 116.6, 40, 0), new Wheel(406, 136.9, 36.6, 0), 91, 48.9, 345.2); //Long linkage Mod1
-    var system = new System(new Wheel(444.8657345136502+60,149.99925091216508,34.96173326719975,5.299397048828742,183.3119478844981), 
-                                new Wheel(367.9201470815851+60,155.3113749964786,37.7990874376663,2.1000000000000005,0),40.53289637598182,107.2711047565303,379.1209913495621);
+    // var system = new System(new Wheel(444.8657345136502+60,149.99925091216508,34.96173326719975,5.299397048828742,183.3119478844981), 
+    //                             new Wheel(367.9201470815851+60,155.3113749964786,37.7990874376663,2.1000000000000005,0),40.53289637598182,107.2711047565303,379.1209913495621);
+    var system = new System(new Wheel(329.8+35,129.4-25,60,5.4,191.9), new Wheel(319.4+35,180.6-25,38.2,6.3,191.9),68,109.8,293.6);    
 
-
+    const testResolution = 0.01;
     function findSysAtPoints(system) {
-        for(system.wheel1.rot = 0; system.wheel1.rot <= PI*2; system.wheel1.rot += 0.02) {
-            for(system.wheel2.rot = 0; system.wheel2.rot <= PI*2; system.wheel2.rot += 0.02) {
+        console.log(system.wheel1.minRotDeg);
+        for(system.wheel1.rot = rad(system.wheel1.minRotDeg); system.wheel1.rot <= rad(system.wheel1.minRotDeg+120); system.wheel1.rot += testResolution) {
+            for(system.wheel2.rot = rad(system.wheel2.minRotDeg); system.wheel2.rot <= rad(system.wheel2.minRotDeg+120); system.wheel2.rot += testResolution) {
                 updateKinematics(system, "findScores");
             }
         }
-        for(system.wheel1.rot = 0; system.wheel1.rot <= PI*2; system.wheel1.rot += 0.02) {
-            for(system.wheel2.rot = 0; system.wheel2.rot <= PI*2; system.wheel2.rot += 0.02) {
+        for(system.wheel1.rot = rad(system.wheel1.minRotDeg); system.wheel1.rot <= rad(system.wheel1.minRotDeg+120); system.wheel1.rot += testResolution) {
+            for(system.wheel2.rot = rad(system.wheel2.minRotDeg); system.wheel2.rot <= rad(system.wheel2.minRotDeg+120); system.wheel2.rot += testResolution) {
                 updateKinematics(system, "findSysAtPoints");
             }
         }
@@ -155,8 +158,8 @@
         for(let i in generatedAnimPoints) {
             if (mode == "findScores") {
                 if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
-                if (sys.wheel1.rot > rad(250) || sys.wheel1.rot < rad(250-120)) return;
-                if (sys.wheel2.rot > rad(45+120) || sys.wheel2.rot < rad(45)) return;
+                // if (sys.wheel1.rot > rad(250) || sys.wheel1.rot < rad(250-120)) return;
+                // if (sys.wheel2.rot > rad(45+120) || sys.wheel2.rot < rad(45)) return;
                 targetScores[i] = Math.min(targetScores[i], Math.hypot(sys.linkageEndpointX-generatedAnimPoints[i].x, sys.linkageEndpointY-generatedAnimPoints[i].y));
             } else if (mode == "findSysAtPoints") {
                 if (Math.hypot(sys.linkageEndpointX-generatedAnimPoints[i].x, sys.linkageEndpointY-generatedAnimPoints[i].y) == targetScores[i]) {
