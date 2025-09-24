@@ -21,6 +21,10 @@
         ctx.lineTo(x2, y2);
         ctx.stroke();
     }
+    function Point (x, y) {
+        this.x = x;
+        this.y = y;
+    }
     function Wheel (x, y, rad, rot, minRotDeg) {
         this.x = x;
         this.y = y;
@@ -44,34 +48,49 @@
     const pxPerMM = 1400/500;
     const shelfDepth_mm = 60;
     const pivotRad_px = 15;
+    const boxSize_mm = 25;
 
     const PI = Math.PI;
     const linkageW_px = 20;
 
     const targetX = shelfDepth_mm-25/2;
-    const targetYPoints = [25/2, 182+25/2, 224+25/2, 266+25/2];
+    const targetYPoints = [boxSize_mm/2, 182+boxSize_mm/2, 224+boxSize_mm/2, 266+boxSize_mm/2];
 
-    var targetScores = [999, 999, 999, 999];
+    const keyframeX = shelfDepth_mm+boxSize_mm;
+    const keyframeYPoints = [boxSize_mm/2, 182+boxSize_mm/2, 224+boxSize_mm/2, 266+boxSize_mm/2];
+
+    const targetPoints = [
+        new Point(targetX, targetYPoints[0]), //0
+        new Point(targetX, targetYPoints[1]), 
+        new Point(targetX, targetYPoints[2]), 
+        new Point(targetX, targetYPoints[3]),
+        new Point(keyframeX, keyframeYPoints[0]), //4
+        new Point(keyframeX, keyframeYPoints[1]), 
+        new Point(keyframeX, keyframeYPoints[2]), 
+        new Point(keyframeX, keyframeYPoints[3]), 
+    ];
+
+    var targetScores = [999, 999, 999, 999, 999, 999, 999, 999];
     var prevSystemScore = 999;
     var stopIterating = false;
 
     //System Variables----------------------------------------------------------------
-    function System (wheel1, wheel2, lengthA, lengthB, lengthBTotal) {
+    function System (wheel1, wheel2, lengthA, lengthB, lengthATotal) {
         this.wheel1 = wheel1;
         this.wheel2 = wheel2;
         this.lengthA = lengthA;
         this.lengthB = lengthB;
-        this.lengthBTotal = lengthBTotal;
+        this.lengthATotal = lengthATotal;
     }
 
     // var bestSystem = new System(new Wheel(350, 100, 30, 0), new Wheel(400, 150, 30, 0), 100, 60, 300);
     // var bestSystem = new System(new Wheel(378, 147, 73.5, 0), new Wheel(391, 109, 42, 0), 99, 64, 331);
     // var bestSystem = new System(new Wheel(351-20, 116.6, 30, 0, 110), new Wheel(426-20, 136.9, 36.6, 0, 45), 91, 48.9, 300);
-    var bestSystem = new System(new Wheel(331, 116.6, 40, 0, 110), new Wheel(406, 136.9, 36.6, 0, 45), 91, 48.9, 345.2); //Long linkage Mod1
+    // var bestSystem = new System(new Wheel(331, 116.6, 40, 0, 110), new Wheel(406, 136.9, 36.6, 0, 45), 91, 48.9, 345.2); //Long linkage Mod1
+var bestSystem = new System(new Wheel(369.1537785338044,161.14400046655442,36.17028139915176,3.7805767089472044,96.28995257066046), new Wheel(437.3753664976455,195.38445848329926,55.8618866417132,2.1000000000000005,0),137.92478307675907,30,404.42582173651533);
 
-
-    function getRandom() {
-        return (Math.random()-0.5)*15;
+function getRandom() {
+        return (Math.random()-0.5)*50;
     }
     function clamp(x, min, max) {
         return Math.max(Math.min(x, max), min);
@@ -92,7 +111,7 @@
 
         system.lengthA += getRandom();
         system.lengthB += getRandom();
-        system.lengthBTotal += getRandom();
+        system.lengthATotal += getRandom();
 
         system.wheel1.minRotDeg = clamp(system.wheel1.minRotDeg, 0, 360-120)
         system.wheel2.minRotDeg = clamp(system.wheel2.minRotDeg, 0, 360-120)
@@ -104,14 +123,14 @@
         system.wheel2.x = clamp(system.wheel2.x, 50, 500)
         system.lengthA = clamp(system.lengthA, 30, 200)
         system.lengthB = clamp(system.lengthB, 30, 200)
-        system.lengthBTotal = clamp(system.lengthBTotal, 30, 1000)
+        system.lengthATotal = clamp(system.lengthATotal, 30, 1000)
     }
 
     function iterateSystem(system) {
         ctx.clearRect(0, 0, W, H);
 
-        for(system.wheel1.rot = 0; system.wheel1.rot <= PI*2; system.wheel1.rot += 0.1) {
-            for(system.wheel2.rot = 0; system.wheel2.rot <= PI*2; system.wheel2.rot += 0.1) {
+        for(system.wheel1.rot = rad(system.wheel1.minRotDeg); system.wheel1.rot <= rad(system.wheel1.minRotDeg+120); system.wheel1.rot += 0.1) {
+            for(system.wheel2.rot = rad(system.wheel2.minRotDeg); system.wheel2.rot <= rad(system.wheel2.minRotDeg+120); system.wheel2.rot += 0.1) {
                 updateKinematics(system);
                 renderSystem(system);
             }
@@ -122,23 +141,26 @@
         return targetScores.reduce((acc, curr) => acc + curr, 0);
     }
 
-//     function dumpSys(sys) {
-// //    var bestSystem = new System(new Wheel(331, 116.6, 40, 0, 110), new Wheel(406, 136.9, 36.6, 0, 45), 91, 48.9, 345.2);
-//         console.log("var bestSystem = new System(new Wheel("+sys.wheel1.x+","+sys.wheel1.y+","+sys.wheel1.rad+", 0,"+sys.wheel1.minRotDeg+"), new Wheel("circle, 136.9, 36.6, 0, 45), 91, 48.9, 345.2);)
-//     }
+    function dumpSys(sys) {
+//    var bestSystem = new System(new Wheel(331, 116.6, 40, 0, 110), new Wheel(406, 136.9, 36.6, 0, 45), 91, 48.9, 345.2);
+        console.log("var bestSystem = new System(new Wheel("+sys.wheel1.x+","+sys.wheel1.y+","+sys.wheel1.rad+","+sys.wheel1.rot+","+sys.wheel1.minRotDeg+"), new Wheel("+sys.wheel2.x+","+sys.wheel2.y+","+sys.wheel2.rad+","+sys.wheel2.rot+","+sys.wheel2.minRotDeg+"),"+sys.lengthA+","+sys.lengthB+","+sys.lengthATotal+");");
+    }
 
     function stop() {
         stopIterating = true;
         setTimeout(() => {
             iterateSystem(bestSystem);
-            console.log(bestSystem);
+            // console.log(bestSystem);
+            // dumpSys(bestSystem);
         }, 1000);
     }
 
     //Kinematic References
     function updateKinematics (sys) {
-        sys.wheel1.updatePivot();
-        sys.wheel2.updatePivot();
+        sys.wheel1.pivotX = sys.wheel1.x+Math.cos(sys.wheel1.rot)*sys.wheel1.rad;
+        sys.wheel1.pivotY = sys.wheel1.y+Math.sin(sys.wheel1.rot)*sys.wheel1.rad;
+        sys.wheel2.pivotX = sys.wheel2.x+Math.cos(sys.wheel2.rot)*sys.wheel2.rad;
+        sys.wheel2.pivotY = sys.wheel2.y+Math.sin(sys.wheel2.rot)*sys.wheel2.rad;
 
         let c = Math.hypot(sys.wheel1.pivotX-sys.wheel2.pivotX, sys.wheel1.pivotY-sys.wheel2.pivotY);
         let thetaInterior = Math.acos((sys.lengthB*sys.lengthB-sys.lengthA*sys.lengthA-c*c)/(-2*sys.lengthA*c)); 
@@ -147,24 +169,17 @@
         sys.linkagePivotX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthA;
         sys.linkagePivotY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthA;
 
-        sys.linkageEndpointX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthBTotal;
-        sys.linkageEndpointY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthBTotal;
+        sys.linkageEndpointX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthATotal;
+        sys.linkageEndpointY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthATotal;
 
-        for(let y in targetYPoints) {
+        for(let i in targetPoints) {
             if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
-            if (sys.wheel1.rot > rad(sys.wheel1.minRotDeg+120) || sys.wheel1.rot < rad(sys.wheel1.minRotDeg)) return;
-            if (sys.wheel2.rot > rad(sys.wheel2.minRotDeg+120) || sys.wheel2.rot < rad(sys.wheel2.minRotDeg)) return;
-            targetScores[y] = Math.min(targetScores[y], Math.hypot(sys.linkageEndpointX-targetX, sys.linkageEndpointY-targetYPoints[y]));
+            targetScores[i] = Math.min(targetScores[i], Math.hypot(sys.linkageEndpointX-targetPoints[i].x, sys.linkageEndpointY-targetPoints[i].y));
         }
     }
 
     //Drawing------------------------------------------------------------------
     function renderSystem(sys) {
-        // ctx.clearRect(0, 0, W, H);
-        
-        if (sys.wheel1.rot > rad(sys.wheel1.minRotDeg+120) || sys.wheel1.rot < rad(sys.wheel1.minRotDeg)) return;
-        if (sys.wheel2.rot > rad(sys.wheel2.minRotDeg+120) || sys.wheel2.rot < rad(sys.wheel2.minRotDeg)) return;
-
         ctx.strokeStyle = "brown";
         ctx.lineWidth = 2*pxPerMM;
         line(0, H, 0, H-264*pxPerMM)
@@ -193,8 +208,8 @@
         circle(sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM, pivotRad_px, true);
 
         ctx.fillStyle = "lime";
-        for(let y in targetYPoints) {
-            circle(targetX*pxPerMM, H-targetYPoints[y]*pxPerMM, 25/2*pxPerMM, true);
+        for(let i in targetPoints) {
+            circle(targetPoints[i].x*pxPerMM, H-targetPoints[i].y*pxPerMM, 25/2*pxPerMM, true);
         }
     }
 
@@ -212,17 +227,23 @@
     
     function evolve () {
         let mutatedSystem = {...bestSystem};
+        mutatedSystem.wheel1 = {...bestSystem.wheel1};
+        mutatedSystem.wheel2 = {...bestSystem.wheel2};
         mutateSystem(mutatedSystem);
+        if (stopIterating) return;
         iterateSystem(mutatedSystem);
         if (stopIterating) return;
-        if (scoreLastIteratedSystem() < prevSystemScore && !isNaN(mutatedSystem.linkageEndpointX+mutatedSystem.linkageEndpointY)) {
+        if (scoreLastIteratedSystem() < prevSystemScore && !isNaN(mutatedSystem.linkageEndpointX+mutatedSystem.linkageEndpointY && !stopIterating)) {
             prevSystemScore = scoreLastIteratedSystem();
-            bestSystem = mutatedSystem;
+            bestSystem = {...mutatedSystem};
+            bestSystem.wheel1 = {...mutatedSystem.wheel1};
+            bestSystem.wheel2 = {...mutatedSystem.wheel2};
             console.log("New Score: " + prevSystemScore);
+            dumpSys(bestSystem);
         } else {
             console.log("No Improvement");
         }
         if (!stopIterating) setTimeout(evolve, 0);
     }
-    evolve();
+    // evolve();
 </script>
