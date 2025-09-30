@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<head><title>Linkage Synthesis</title></head>
+<head><title>Inverse Kinematics</title></head>
 
 <canvas id="canvas" width="1400" height="950"></canvas>    
 
@@ -8,43 +8,46 @@
     var ctx = canvas.getContext("2d");
     ctx.translate(10, -10);
 
+
     //Utils--------------------------------------------------------------------
-    function circle(x, y, r, doOutline) {
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, 2*Math.PI, false);
-        ctx.fill();
-        if (doOutline) ctx.stroke();
-    }
-    function line(x, y, x2, y2) {
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-    }
     function lerp (x, y, i) {
         return x * (1 - i) + y * i;
     }
     function rad (deg) {
         return deg*PI/180
     }
-    function Wheel (x, y, rad, rot, minRotDeg) {
-        this.x = x;
-        this.y = y;
-        
-        this.rad = rad;
-        this.rot = rot;
-        this.minRotDeg = minRotDeg;
-
-        this.updatePivot = ()=>{
-            this.pivotX = this.x+Math.cos(this.rot)*this.rad;
-            this.pivotY = this.y+Math.sin(this.rot)*this.rad;
-        }
-        this.updatePivot();
+    function interpolatePoints(p1, p2, i) {
+        return new Point(lerp(p1.x, p2.x, i), lerp(p1.y, p2.y, i));
     }
+    function dist(p1, p2) {
+        return Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    }
+
+
+    //Objects------------------------------------------------------------------
     function Point (x, y) {
         this.x = x;
         this.y = y;
+
+        this.test = function() {
+            return "a";
+        }
     }
+    function Wheel (origin, rad, rot, minRotDeg) {
+        this.origin = origin;
+        this.pivot = null;
+        this.rad = rad;
+        this.rot = rot;
+        this.minRotDeg = minRotDeg;
+    }
+    function System (wheel1, wheel2, lengthA, lengthB, lengthATotal) {
+        this.wheel1 = wheel1;
+        this.wheel2 = wheel2;
+        this.lengthA = lengthA;
+        this.lengthB = lengthB;
+        this.lengthATotal = lengthATotal;
+    }
+
 
     //Constants----------------------------------------------------------------
     const W = 1400;
@@ -58,136 +61,101 @@
     const PI = Math.PI;
     const linkageW_px = 20;
 
-    const ROTATION_RANGE_DEG = 120;
-
-    const targetX = shelfDepth_mm-25/2;
-    const targetYPoints = [boxSize_mm/2, 182+boxSize_mm/2, 224+boxSize_mm/2, 266+boxSize_mm/2];
-
-    const keyframeX = shelfDepth_mm+boxSize_mm;
-    const keyframeYPoints = [boxSize_mm/2, 182+boxSize_mm/2, 224+boxSize_mm/2, 266+boxSize_mm/2];
-
     const targetPoints = [
-        new Point(targetX, targetYPoints[0]), //0
-        new Point(targetX, targetYPoints[1]), 
-        new Point(targetX, targetYPoints[2]), 
-        new Point(targetX, targetYPoints[3]),
-        new Point(keyframeX, keyframeYPoints[0]), //4
-        new Point(keyframeX, keyframeYPoints[1]), 
-        new Point(keyframeX, keyframeYPoints[2]), 
-        new Point(keyframeX, keyframeYPoints[3]), 
+        new Point(shelfDepth_mm-25/2, boxSize_mm/2), //0
+        new Point(shelfDepth_mm-25/2, 182+boxSize_mm/2), 
+        new Point(shelfDepth_mm-25/2, 224+boxSize_mm/2), 
+        new Point(shelfDepth_mm-25/2, 266+boxSize_mm/2),
+        new Point(shelfDepth_mm+boxSize_mm, boxSize_mm/2), //4
+        new Point(shelfDepth_mm+boxSize_mm, 182+boxSize_mm/2), 
+        new Point(shelfDepth_mm+boxSize_mm, 224+boxSize_mm/2), 
+        new Point(shelfDepth_mm+boxSize_mm, 266+boxSize_mm/2), 
     ];
+    const keyframes = [0,4,5,1,5,6,2,6,7,3,];
+    
 
-    var generatedAnimPoints = [];
-
-    const keyframes = [
-        0,
-        4,
-        5,
-        1,
-        5,
-        6,
-        2,
-        6,
-        7,
-        3,
-    ];
-    var sysAtPoints = Array(targetPoints.length);
+    //System Variables---------------------------------------------------------
+    var sys = new System(new Wheel(new Point(336,102.1),53.8,4.5,139.3), new Wheel(new Point(375.3,125.1),50.3,2.7,33.3),63.7,88.8,323.1);
     var currentKeyframe = 0;
     var interpolation = 0;
-    
-    var targetScores = [];
 
-    //System Variables----------------------------------------------------------------
-    function System (wheel1, wheel2, lengthA, lengthB, lengthATotal) {
-        this.wheel1 = wheel1;
-        this.wheel2 = wheel2;
-        this.lengthA = lengthA;
-        this.lengthB = lengthB;
-        this.lengthATotal = lengthATotal;
+
+    //Inverse kinematics-------------------------------------------------------
+    //Sourced from https://stackoverflow.com/questions/12219802/a-javascript-function-that-returns-the-x-y-points-of-intersection-between-two-ci
+    function findIntersection (p1, r1, p2, r2) {
+        let dx = p2.x - p1.x;
+        let dy = p2.y - p1.y;
+
+        let d = dist(p1, p2);
+        let a = (r1*r1 - r2*r2 + d*d) / (2.0*d) ;
+
+        let x2 = p1.x + (dx * a/d);
+        let y2 = p1.y + (dy * a/d);
+
+        let h = Math.sqrt(r1*r1 - a*a);
+
+        let rx = -dy * (h/d);
+        let ry = dx * (h/d);
+
+        let xi = x2 + rx;
+        let xi_prime = x2 - rx;
+        let yi = y2 + ry;
+        let yi_prime = y2 - ry;
+
+        return [new Point(xi, yi), new Point(xi_prime, yi_prime)];
     }
 
-    // var bestSystem = new System(new Wheel(350, 100, 30, 0), new Wheel(400, 150, 30, 0), 100, 60, 300);
-    // var bestSystem = new System(new Wheel(378, 147, 73.5, 0), new Wheel(391, 109, 42, 0), 99, 64, 331);
-    // var system = new System(new Wheel(331, 116.6, 30, 0, 90), new Wheel(406, 136.9, 36.6, 0, 0), 91, 48.9, 345.2); //Long linkage
-    // var bestSystem = new System(new Wheel(331, 116.6, 30, 0), new Wheel(406, 136.9, 36.6, 0), 91, 40, 345.2); //Long linkage Mod2
-    // var bestSystem = new System(new Wheel(263.7, 89.1, 40.5, 0), new Wheel(380, 139.4, 54, 0), 93, 48.6, 308); //Short Linkage
-    
-    // var system = new System(new Wheel(331, 116.6, 40, 0), new Wheel(406, 136.9, 36.6, 0), 91, 48.9, 345.2); //Long linkage Mod1
-    // var system = new System(new Wheel(444.8657345136502+60,149.99925091216508,34.96173326719975,5.299397048828742,183.3119478844981), 
-    //                             new Wheel(367.9201470815851+60,155.3113749964786,37.7990874376663,2.1000000000000005,0),40.53289637598182,107.2711047565303,379.1209913495621);
-    // var system = new System(new Wheel(329.8+35,129.4-25,50,5.4,191.9), new Wheel(319.4+35,180.6-25,38.2,6.3,191.9),68,109.8,293.6);    
-    // var system = new System(new Wheel(321,116-35,54.9,2.3,10), new Wheel(385.8,156.6-35,43.5,2.9,44.8),80.6,63.5,331.9);
-    // var system = new System(new Wheel(332.7-10,112-50,60,3.7,88.8), new Wheel(389.8-10,135.3-50,52.8,2.7,36.6),72.8,78,335); //Looks feasible!
-    var system = new System(new Wheel(316+20,122.1-20,53.8,4.5,139.3), new Wheel(355.3+20,145.1-20,50.3,2.7,33.3),63.7,88.8,323.1);
+    function runIK() {
+        let target = interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation);
+        
+        sys.linkageEndpoint = target;
+        sys.wheel2.pivot = findIntersection(target, sys.lengthATotal, sys.wheel2.origin, sys.wheel2.rad)[0];
+        
+        let thetaLinkage = Math.atan2(sys.linkageEndpoint.y-sys.wheel2.pivot.y, sys.linkageEndpoint.x-sys.wheel2.pivot.x);
+        let linkagePivotX = sys.wheel2.pivot.x+Math.cos(thetaLinkage)*sys.lengthA;
+        let linkagePivotY = sys.wheel2.pivot.y+Math.sin(thetaLinkage)*sys.lengthA;
+        sys.linkagePivot = new Point(linkagePivotX, linkagePivotY);
+        sys.wheel1.pivot = findIntersection(sys.linkagePivot, sys.lengthB, sys.wheel1.origin, sys.wheel1.rad)[1];
+        
+        renderSystem(sys);
 
-
-    const testResolution = 0.01;
-    function findSysAtPoints(system) {
-        console.log(system.wheel1.minRotDeg);
-        for(system.wheel1.rot = rad(system.wheel1.minRotDeg); system.wheel1.rot <= rad(system.wheel1.minRotDeg+ROTATION_RANGE_DEG); system.wheel1.rot += testResolution) {
-            for(system.wheel2.rot = rad(system.wheel2.minRotDeg); system.wheel2.rot <= rad(system.wheel2.minRotDeg+ROTATION_RANGE_DEG); system.wheel2.rot += testResolution) {
-                updateKinematics(system, "findScores");
-            }
+        interpolation += 1/dist(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]]);
+        if(interpolation >= 1) {
+            interpolation = 0;
+            currentKeyframe++;
         }
-        for(system.wheel1.rot = rad(system.wheel1.minRotDeg); system.wheel1.rot <= rad(system.wheel1.minRotDeg+ROTATION_RANGE_DEG); system.wheel1.rot += testResolution) {
-            for(system.wheel2.rot = rad(system.wheel2.minRotDeg); system.wheel2.rot <= rad(system.wheel2.minRotDeg+ROTATION_RANGE_DEG); system.wheel2.rot += testResolution) {
-                updateKinematics(system, "findSysAtPoints");
-            }
-        }
+        if (currentKeyframe >= keyframes.length-1) currentKeyframe = 0;
+        requestAnimationFrame(runIK);
     }
+    runIK();
 
-    function interpolateSystems(sys1, sys2, i) {
-        let iSys = {...system};
-        iSys.wheel1.rot = lerp(sys1.wheel1.rot, sys2.wheel1.rot, i);
-        iSys.wheel2.rot = lerp(sys1.wheel2.rot, sys2.wheel2.rot, i);
-        updateKinematics(iSys, "none");
-        return iSys;
-    }
-    function interpolatePoints(p1, p2, i) {
-        return new Point(lerp(p1.x, p2.x, i), lerp(p1.y, p2.y, i));
-    }
-
-    function updateKinematics (sys, mode) {
-        sys.wheel1.updatePivot();
-        sys.wheel2.updatePivot();
-
-        let c = Math.hypot(sys.wheel1.pivotX-sys.wheel2.pivotX, sys.wheel1.pivotY-sys.wheel2.pivotY);
-        let thetaInterior = Math.acos((sys.lengthB*sys.lengthB-sys.lengthA*sys.lengthA-c*c)/(-2*sys.lengthA*c)); 
-        let thetaReference = Math.atan2(sys.wheel1.pivotY-sys.wheel2.pivotY, sys.wheel1.pivotX-sys.wheel2.pivotX);
-        let thetaLinkage = thetaReference-thetaInterior;
-        sys.linkagePivotX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthA;
-        sys.linkagePivotY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthA;
-
-        sys.linkageEndpointX = sys.wheel2.pivotX+Math.cos(thetaLinkage)*sys.lengthATotal;
-        sys.linkageEndpointY = sys.wheel2.pivotY+Math.sin(thetaLinkage)*sys.lengthATotal;
-
-        for(let i in generatedAnimPoints) {
-            if (mode == "findScores") {
-                if (isNaN(sys.linkageEndpointX+sys.linkageEndpointY)) return;
-                // if (sys.wheel1.rot > rad(250) || sys.wheel1.rot < rad(250-120)) return;
-                // if (sys.wheel2.rot > rad(45+120) || sys.wheel2.rot < rad(45)) return;
-                targetScores[i] = Math.min(targetScores[i], Math.hypot(sys.linkageEndpointX-generatedAnimPoints[i].x, sys.linkageEndpointY-generatedAnimPoints[i].y));
-            } else if (mode == "findSysAtPoints") {
-                if (Math.hypot(sys.linkageEndpointX-generatedAnimPoints[i].x, sys.linkageEndpointY-generatedAnimPoints[i].y) == targetScores[i]) {
-                    sysAtPoints[i] = JSON.parse(JSON.stringify(sys));
-                }
-            }
-        }
-    }
 
     //Drawing------------------------------------------------------------------
+    function circle(x, y, r, doOutline) {
+        ctx.beginPath();
+        ctx.arc(x*pxPerMM, H-y*pxPerMM, r, 0, 2*Math.PI, false);
+        ctx.fill();
+        if (doOutline) ctx.stroke();
+    }
+    function line(x, y, x2, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x*pxPerMM, H-y*pxPerMM);
+        ctx.lineTo(x2*pxPerMM, H-y2*pxPerMM);
+        ctx.stroke();
+    }
+
     function renderSystem(sys) {
         ctx.clearRect(0, 0, W, H);
 
         //Draw the wheels
         ctx.strokeStyle = "black";
         ctx.fillStyle = "red";
-        circle(sys.wheel1.x*pxPerMM, H-sys.wheel1.y*pxPerMM, sys.wheel1.rad*pxPerMM, true);
+        circle(sys.wheel1.origin.x, sys.wheel1.origin.y, sys.wheel1.rad*pxPerMM, true);
         ctx.fillStyle = "green";
-        circle(sys.wheel2.x*pxPerMM, H-sys.wheel2.y*pxPerMM, sys.wheel2.rad*pxPerMM, true);
+        circle(sys.wheel2.origin.x, sys.wheel2.origin.y, sys.wheel2.rad*pxPerMM, true);
         ctx.fillStyle = "black";
-        circle(sys.wheel1.x*pxPerMM, H-sys.wheel1.y*pxPerMM, pivotRad_px/3, true);
-        circle(sys.wheel2.x*pxPerMM, H-sys.wheel2.y*pxPerMM, pivotRad_px/3, true);
+        circle(sys.wheel1.origin.x, sys.wheel1.origin.y, pivotRad_px/3, true);
+        circle(sys.wheel2.origin.x, sys.wheel2.origin.y, pivotRad_px/3, true);
 
         //Set the color
         ctx.strokeStyle = "cyan";
@@ -196,69 +164,31 @@
         //Draw the linkages
         ctx.globalAlpha = 0.5;
         ctx.lineWidth = linkageW_px;
-        line(sys.wheel2.pivotX*pxPerMM, H-sys.wheel2.pivotY*pxPerMM, sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM);
-        line(sys.wheel1.pivotX*pxPerMM, H-sys.wheel1.pivotY*pxPerMM, sys.linkagePivotX*pxPerMM, H-sys.linkagePivotY*pxPerMM);
+        line(sys.wheel2.pivot.x, sys.wheel2.pivot.y, sys.linkageEndpoint.x, sys.linkageEndpoint.y);
+        line(sys.wheel1.pivot.x, sys.wheel1.pivot.y, sys.linkagePivot.x, sys.linkagePivot.y);
         ctx.globalAlpha = 1;
 
         //Draw the pivots
         ctx.lineWidth = 2*pxPerMM;
         ctx.strokeStyle = "black";
-        circle(sys.wheel1.pivotX*pxPerMM, H-sys.wheel1.pivotY*pxPerMM, pivotRad_px, true);
-        circle(sys.wheel2.pivotX*pxPerMM, H-sys.wheel2.pivotY*pxPerMM, pivotRad_px, true);
-        circle(sys.linkagePivotX*pxPerMM, H-sys.linkagePivotY*pxPerMM, pivotRad_px, true);
-        circle(sys.linkageEndpointX*pxPerMM, H-sys.linkageEndpointY*pxPerMM, pivotRad_px, true);
+        circle(sys.wheel1.pivot.x, sys.wheel1.pivot.y, pivotRad_px, true);
+        circle(sys.wheel2.pivot.x, sys.wheel2.pivot.y, pivotRad_px, true);
+        circle(sys.linkagePivot.x, sys.linkagePivot.y, pivotRad_px, true);
+        circle(sys.linkageEndpoint.x, sys.linkageEndpoint.y, pivotRad_px, true);
 
         //Draw the targets and keyframes
-        ctx.fillStyle = "red";
-        for(let y in targetYPoints) {
-            ctx.fillRect((targetX-boxSize_mm/2)*pxPerMM, H-(targetYPoints[y]+boxSize_mm/2)*pxPerMM, boxSize_mm*pxPerMM, boxSize_mm*pxPerMM);
-        }
         ctx.fillStyle = "lime";
-        for(let y in keyframeYPoints) {
-            circle(keyframeX*pxPerMM, H-keyframeYPoints[y]*pxPerMM, 10, true);
+        for(let i in targetPoints) {
+            circle(targetPoints[i].x, targetPoints[i].y, 10, true);
         }
 
         //Draw the shelf
         ctx.strokeStyle = "brown";
         ctx.lineWidth = 2*pxPerMM;
-        line(0, H, 0, H-264*pxPerMM)
-        line(0, H, shelfDepth_mm*pxPerMM, H)
-        line(0, H-181*pxPerMM, shelfDepth_mm*pxPerMM, H-181*pxPerMM)
-        line(0, H-223*pxPerMM, shelfDepth_mm*pxPerMM, H-223*pxPerMM)
-        line(0, H-264*pxPerMM, shelfDepth_mm*pxPerMM, H-265*pxPerMM)
+        line(0, 0, 0, 264)
+        line(0, 0, shelfDepth_mm, 0)
+        line(0, 181, shelfDepth_mm, 181)
+        line(0, 223, shelfDepth_mm, 223)
+        line(0, 264, shelfDepth_mm, 265)
     }
-
-    function generateAnimPoints() {
-        let newPoint = interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation);
-        generatedAnimPoints.push(newPoint);
-        targetScores.push(999);
-
-        interpolation += 0.01;
-        if(interpolation > 1) {
-            interpolation = 0;
-            currentKeyframe++;
-        }
-        if (currentKeyframe < keyframes.length-1) generateAnimPoints();
-    }
-    generateAnimPoints();
-    currentKeyframe = 0;
-
-    findSysAtPoints(system);
-
-    console.log("Done")
-
-    function animate() {
-        let sys = interpolateSystems(sysAtPoints[currentKeyframe], sysAtPoints[currentKeyframe+1], interpolation);
-        renderSystem(sys);
-        // console.log(sys)
-
-        // interpolation += 0.01;
-        // if(interpolation >= 1) {
-        //     interpolation = 0;
-            currentKeyframe++;
-        // }
-        if (currentKeyframe >= sysAtPoints.length-1) currentKeyframe = 0;
-        requestAnimationFrame(animate);
-    }
-    animate();
 </script>
