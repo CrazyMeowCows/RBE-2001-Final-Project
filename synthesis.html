@@ -28,10 +28,6 @@
     function Point (x, y) {
         this.x = x;
         this.y = y;
-
-        this.test = function() {
-            return "a";
-        }
     }
     function Wheel (origin, rad, rot, minRotDeg) {
         this.origin = origin;
@@ -61,12 +57,14 @@
     const PI = Math.PI;
     const linkageW_px = 20;
 
+    const movementSpeed = 1;
+
     const targetPoints = [
         new Point(shelfDepth_mm-25/2, boxSize_mm/2), //0
         new Point(shelfDepth_mm-25/2, 182+boxSize_mm/2), 
         new Point(shelfDepth_mm-25/2, 224+boxSize_mm/2), 
         new Point(shelfDepth_mm-25/2, 266+boxSize_mm/2),
-        new Point(shelfDepth_mm+boxSize_mm, boxSize_mm/2), //4
+        new Point(shelfDepth_mm+boxSize_mm, 130+boxSize_mm/2), //4
         new Point(shelfDepth_mm+boxSize_mm, 182+boxSize_mm/2), 
         new Point(shelfDepth_mm+boxSize_mm, 224+boxSize_mm/2), 
         new Point(shelfDepth_mm+boxSize_mm, 266+boxSize_mm/2), 
@@ -109,7 +107,7 @@
         let target = interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation);
         
         sys.linkageEndpoint = target;
-        sys.wheel2.pivot = findIntersection(target, sys.lengthATotal, sys.wheel2.origin, sys.wheel2.rad)[0];
+        sys.wheel2.pivot = findIntersection(sys.linkageEndpoint, sys.lengthATotal, sys.wheel2.origin, sys.wheel2.rad)[0];
         
         let thetaLinkage = Math.atan2(sys.linkageEndpoint.y-sys.wheel2.pivot.y, sys.linkageEndpoint.x-sys.wheel2.pivot.x);
         let linkagePivotX = sys.wheel2.pivot.x+Math.cos(thetaLinkage)*sys.lengthA;
@@ -119,12 +117,13 @@
         
         renderSystem(sys);
 
-        interpolation += 1/dist(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]]);
+        interpolation += movementSpeed/dist(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]]);
         if(interpolation >= 1) {
             interpolation = 0;
             currentKeyframe++;
         }
         if (currentKeyframe >= keyframes.length-1) currentKeyframe = 0;
+        
         requestAnimationFrame(runIK);
     }
     runIK();
