@@ -14,7 +14,10 @@
         return x * (1 - i) + y * i;
     }
     function rad (deg) {
-        return deg*PI/180
+        return deg*PI/180;
+    }
+    function deg (rad) {
+        return rad*180/PI;
     }
     function interpolatePoints(p1, p2, i) {
         return new Point(lerp(p1.x, p2.x, i), lerp(p1.y, p2.y, i));
@@ -103,8 +106,9 @@
         return [new Point(xi, yi), new Point(xi_prime, yi_prime)];
     }
 
-    function runIK() {
-        let target = interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation);
+    function runIK(tx, ty) {
+        let target = new Point(tx, ty);
+        // let target = interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation);
         
         sys.linkageEndpoint = target;
         sys.wheel2.pivot = findIntersection(sys.linkageEndpoint, sys.lengthATotal, sys.wheel2.origin, sys.wheel2.rad)[0];
@@ -117,16 +121,22 @@
         
         renderSystem(sys);
 
+        let wheel1Rot = deg(Math.atan2(sys.wheel1.pivot.y-sys.wheel1.origin.y, sys.wheel1.pivot.x-sys.wheel1.origin.x));
+        let wheel2Rot = deg(Math.atan2(sys.wheel2.pivot.y-sys.wheel2.origin.y, sys.wheel2.pivot.x-sys.wheel2.origin.x));
+        wheel1Rot = -(wheel1Rot+180); if (wheel1Rot < -180) wheel1Rot += 360;
+        wheel2Rot = -wheel2Rot+180;
+
         interpolation += movementSpeed/dist(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]]);
         if(interpolation >= 1) {
+            console.log("Wheel 1: " + wheel1Rot + " | Wheel 2: " + wheel2Rot);
             interpolation = 0;
             currentKeyframe++;
         }
         if (currentKeyframe >= keyframes.length-1) currentKeyframe = 0;
         
-        requestAnimationFrame(runIK);
+        // requestAnimationFrame(runIK);
     }
-    runIK();
+    // runIK();
 
 
     //Drawing------------------------------------------------------------------
