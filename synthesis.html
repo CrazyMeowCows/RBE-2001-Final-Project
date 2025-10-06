@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <head><title>Inverse Kinematics</title></head>
 
+
 <canvas id="canvas" width="1400" height="950"></canvas>    
+<p id="output">Output:</p>
 
 <script>
     var canvas = document.getElementById('canvas')
     var ctx = canvas.getContext("2d");
     ctx.translate(10, -10);
-
+    var output = document.getElementById("output");
 
     //Utils--------------------------------------------------------------------
     function lerp (x, y, i) {
@@ -60,7 +62,7 @@
     const PI = Math.PI;
     const linkageW_px = 20;
 
-    const movementSpeed = 1;
+    const movementSpeed = 10;
 
     const targetPoints = [
         new Point(shelfDepth_mm-25/2, boxSize_mm/2), //0
@@ -72,7 +74,28 @@
         new Point(shelfDepth_mm+boxSize_mm, 224+boxSize_mm/2), 
         new Point(shelfDepth_mm+boxSize_mm, 266+boxSize_mm/2), 
     ];
-    const keyframes = [0,4,5,1,5,6,2,6,7,3,];
+    const keyframes = [0,0,4,5,1,1,5,6,2,2,6,7,3,3,];
+    const keyframeDelays_ms = [
+        1500, 1500, 0, 0, 1500, 1500, 0, 0, 1500, 1500, 0, 0, 1500, 1500,
+    ]
+    const grabberOpen = 90;
+    const grabberClosed = 0;
+    const grabberPos = [
+        grabberOpen, 
+        grabberClosed,
+        grabberClosed,
+        grabberClosed,
+        grabberClosed,
+        grabberOpen,
+        grabberOpen,
+        grabberOpen,
+        grabberOpen,
+        grabberClosed,
+        grabberClosed,
+        grabberClosed,
+        grabberClosed,
+        grabberOpen,
+    ]
     
 
     //System Variables---------------------------------------------------------
@@ -106,10 +129,9 @@
         return [new Point(xi, yi), new Point(xi_prime, yi_prime)];
     }
 
-    function runIK(tx, ty) {
-        let target = new Point(tx, ty);
-        // let target = interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation);
-        
+    function solveIK(target) {
+        tx = target.x;
+        ty = target.y;
         sys.linkageEndpoint = target;
         sys.wheel2.pivot = findIntersection(sys.linkageEndpoint, sys.lengthATotal, sys.wheel2.origin, sys.wheel2.rad)[0];
         
@@ -118,23 +140,44 @@
         let linkagePivotY = sys.wheel2.pivot.y+Math.sin(thetaLinkage)*sys.lengthA;
         sys.linkagePivot = new Point(linkagePivotX, linkagePivotY);
         sys.wheel1.pivot = findIntersection(sys.linkagePivot, sys.lengthB, sys.wheel1.origin, sys.wheel1.rad)[1];
-        
+    }
+
+    const CONTROL_LOOP_PERIOD = 50;
+    var inc = keyframeDelays_ms[0]/CONTROL_LOOP_PERIOD;
+    var break_loop = false;
+    var tx = 0;
+    var ty = 0;
+
+    function runIK() {
+        if (currentKeyframe < keyframes.length-1) solveIK(interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation))
+        output.innerHTML += "<br>"+tx+"|"+ty+"|"+grabberPos[currentKeyframe];
         renderSystem(sys);
+        console.log(grabberPos[currentKeyframe]);
 
-        let wheel1Rot = deg(Math.atan2(sys.wheel1.pivot.y-sys.wheel1.origin.y, sys.wheel1.pivot.x-sys.wheel1.origin.x));
-        let wheel2Rot = deg(Math.atan2(sys.wheel2.pivot.y-sys.wheel2.origin.y, sys.wheel2.pivot.x-sys.wheel2.origin.x));
-        wheel1Rot = -(wheel1Rot+180); if (wheel1Rot < -180) wheel1Rot += 360;
-        wheel2Rot = -wheel2Rot+180;
+        // let wheel1Rot = deg(Math.atan2(sys.wheel1.pivot.y-sys.wheel1.origin.y, sys.wheel1.pivot.x-sys.wheel1.origin.x));
+        // let wheel2Rot = deg(Math.atan2(sys.wheel2.pivot.y-sys.wheel2.origin.y, sys.wheel2.pivot.x-sys.wheel2.origin.x));
+        // wheel1Rot = -(wheel1Rot+180); if (wheel1Rot < -180) wheel1Rot += 360;
+        // wheel2Rot = -wheel2Rot+180;
+        // console.log("Wheel 1: " + wheel1Rot + " | Wheel 2: " + wheel2Rot);
+        // console.log(interpolation);
 
-        interpolation += movementSpeed/dist(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]]);
+        if (inc == 0) {
+            interpolation += movementSpeed/dist(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]]);
+        } else {
+            inc--;
+        }
+
         if(interpolation >= 1) {
-            console.log("Wheel 1: " + wheel1Rot + " | Wheel 2: " + wheel2Rot);
             interpolation = 0;
+            inc = keyframeDelays_ms[currentKeyframe+1]/CONTROL_LOOP_PERIOD;
             currentKeyframe++;
         }
-        if (currentKeyframe >= keyframes.length-1) currentKeyframe = 0;
-        
-        // requestAnimationFrame(runIK);
+        if (inc == 0 && currentKeyframe >= keyframes.length-1) {
+            break_loop = true;
+            console.log("Terminate")
+        }
+        if (!break_loop) requestAnimationFrame(runIK);
+        // if (!break_loop) setTimeout(runIK, CONTROL_LOOP_PERIOD);
     }
     // runIK();
 
