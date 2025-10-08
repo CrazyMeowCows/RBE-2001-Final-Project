@@ -73,6 +73,7 @@
     var targetScores = [999, 999, 999, 999, 999, 999, 999, 999];
     var prevSystemScore = 999;
     var stopIterating = false;
+    var bestScore = 999;
 
     //System Variables----------------------------------------------------------------
     function System (wheel1, wheel2, lengthA, lengthB, lengthATotal) {
@@ -127,7 +128,7 @@ function getRandom() {
     }
 
     function iterateSystem(system) {
-        ctx.clearRect(0, 0, W, H);
+        ctx.clearRect(-10, -10, W+20, H+20);
 
         for(system.wheel1.rot = rad(system.wheel1.minRotDeg); system.wheel1.rot <= rad(system.wheel1.minRotDeg+120); system.wheel1.rot += 0.1) {
             for(system.wheel2.rot = rad(system.wheel2.minRotDeg); system.wheel2.rot <= rad(system.wheel2.minRotDeg+120); system.wheel2.rot += 0.1) {
@@ -135,6 +136,12 @@ function getRandom() {
                 renderSystem(system);
             }
         }
+
+        ctx.fillStyle = "black";
+        ctx.font = "50px Arial";
+        ctx.textBaseline = "top";
+        ctx.textAlign = "right"
+        ctx.fillText("Best Score: " + Math.round(bestScore*10000)/10000, W-10, 10);
     }
 
     function scoreLastIteratedSystem(system) {
@@ -239,11 +246,13 @@ function getRandom() {
             bestSystem.wheel1 = {...mutatedSystem.wheel1};
             bestSystem.wheel2 = {...mutatedSystem.wheel2};
             console.log("New Score: " + prevSystemScore);
+            bestScore = prevSystemScore;
+            if (bestScore < 6) stop();
             dumpSys(bestSystem);
         } else {
             console.log("No Improvement");
         }
         if (!stopIterating) setTimeout(evolve, 0);
     }
-    // evolve();
+    evolve();
 </script>
