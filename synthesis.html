@@ -115,7 +115,8 @@
 
     function runIK(tx, ty) {
         // let target = new Point(tx, ty);
-        let target = interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation);
+        let target = new Point(targetPoints[3].x, targetPoints[3].y);
+        // let target = interpolatePoints(targetPoints[keyframes[currentKeyframe]], targetPoints[keyframes[currentKeyframe+1]], interpolation);
         
         sys.linkageEndpoint = target;
         sys.wheel2.pivot = findIntersection(sys.linkageEndpoint, sys.lengthATotal, sys.wheel2.origin, sys.wheel2.rad)[0];
@@ -141,7 +142,7 @@
         }
         if (currentKeyframe >= keyframes.length-1) currentKeyframe = 0;
         
-        requestAnimationFrame(runIK);
+        // requestAnimationFrame(runIK);
     }
     runIK();
 
@@ -150,7 +151,7 @@
     function circle(x, y, r, doOutline) {
         ctx.beginPath();
         ctx.arc(x*pxPerMM, H-y*pxPerMM, r, 0, 2*Math.PI, false);
-        ctx.fill();
+        // ctx.fill();
         if (doOutline) ctx.stroke();
     }
     function line(x, y, x2, y2) {
@@ -162,29 +163,36 @@
 
     function renderSystem(sys) {
         ctx.clearRect(0, 0, W, H);
-
+        
         ctx.drawImage(romi, W/2+120, H/2+290, romiSizeW_px*romiSizeRatio, romiSizeH_px*romiSizeRatio);
+        ctx.lineCap = "round";
 
         //Draw the wheels
         ctx.strokeStyle = "black";
-        
+        ctx.lineWidth = 2*pxPerMM;
+
+        ctx.strokeStyle = "red";
         ctx.setLineDash([5, 15]);
         ctx.beginPath();
         ctx.arc(sys.wheel1.origin.x*pxPerMM, H-sys.wheel1.origin.y*pxPerMM, sys.wheel1.rad*pxPerMM, 0, 2*Math.PI, false);
         ctx.stroke();
+        circle(sys.linkagePivot.x, sys.linkagePivot.y, sys.lengthB*pxPerMM, true);
+        ctx.strokeStyle = "cyan";
+        ctx.setLineDash([]);
         ctx.beginPath();
-        ctx.arc(sys.wheel2.origin.x*pxPerMM, H-sys.wheel2.origin.y*pxPerMM, sys.wheel1.rad*pxPerMM, 0, 2*Math.PI, false);
+        ctx.arc(sys.wheel2.origin.x*pxPerMM, H-sys.wheel2.origin.y*pxPerMM, sys.wheel2.rad*pxPerMM, 0, 2*Math.PI, false);
         ctx.stroke();
 
-        ctx.setLineDash([]);
+        ctx.strokeStyle = "cyan";
+        circle(sys.linkageEndpoint.x, sys.linkageEndpoint.y, sys.lengthATotal*pxPerMM, true);
+
         ctx.lineWidth = 50;
-        ctx.lineCap = "round";
-        ctx.strokeStyle = "red";
+        ctx.strokeStyle = "orange";
         line(sys.wheel1.origin.x, sys.wheel1.origin.y, sys.wheel1.pivot.x, sys.wheel1.pivot.y);
         ctx.strokeStyle = "green";
         line(sys.wheel2.origin.x, sys.wheel2.origin.y, sys.wheel2.pivot.x, sys.wheel2.pivot.y);
         
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 5;
         ctx.fillStyle = "black";
         ctx.strokeStyle = "black";
         circle(sys.wheel1.origin.x, sys.wheel1.origin.y, pivotRad_px/3, true);
@@ -195,9 +203,10 @@
         ctx.fillStyle = "cyan";
 
         //Draw the linkages
-        ctx.globalAlpha = 0.5;
+        // ctx.globalAlpha = 0.5;
         ctx.lineWidth = linkageW_px;
         line(sys.wheel2.pivot.x, sys.wheel2.pivot.y, sys.linkageEndpoint.x, sys.linkageEndpoint.y);
+        ctx.strokeStyle = "red";
         line(sys.wheel1.pivot.x, sys.wheel1.pivot.y, sys.linkagePivot.x, sys.linkagePivot.y);
         ctx.globalAlpha = 1;
 
@@ -211,9 +220,9 @@
 
         //Draw the targets and keyframes
         ctx.fillStyle = "lime";
-        for(let i in targetPoints) {
-            circle(targetPoints[i].x, targetPoints[i].y, 10, true);
-        }
+        // for(let i in targetPoints) {
+            // circle(targetPoints[3].x, targetPoints[3].y, 10, true);
+        // }
 
         //Draw the shelf
         ctx.strokeStyle = "brown";
